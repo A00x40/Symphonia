@@ -66,9 +66,34 @@ const userSchema = new mongoose.Schema({
     max: '1-1-2000',
     required: [true, 'please provide your date of birth']
   },
-  tracks: {
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: 'Track',
+  history: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'History',
+    select: false
+  },
+  queue: {
+    queueTracks: [String],
+    currentlyPlaying: {
+      currentTrack: { type: String, default: null },
+      device: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User.queue.devices'
+      }
+    },
+    previousTrack: { type: String, default: null },
+    nextTrack: { type: String, defult: null },
+    repeat: { type: Boolean, default: false }, //when reload the page
+    volume: String, //when reload the page
+    seek: { type: String, defult: null }, //when reload the page
+    trackProgress: { type: String, defult: null }, //when reload the page
+    shuffle: { type: Boolean, default: false }, //when reload the page
+    play: { type: Boolean, default: false },
+    devices: [
+      {
+        devicesName: String
+      }
+    ],
+    repeatOnce: { type: Boolean, default: false },
     select: false
   },
   followedUsers: [
@@ -77,6 +102,27 @@ const userSchema = new mongoose.Schema({
       ref: 'User'
     }
   ],
+  tracks: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Track'
+    }
+  ],
+  ownedPlaylists: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Playlist'
+    }
+  ],
+  followedAlbums: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Album'
+    }
+  ],
+  usersCount: {
+    type: Number
+  },
   passwordChangedAt: Date,
   passwordResetToken: String,
   passwordResetExpires: Date,
@@ -90,7 +136,8 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     defult: true,
     select: false
-  }
+  },
+  phone: String
 });
 
 userSchema.pre('save', async function (next) {

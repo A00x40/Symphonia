@@ -1,27 +1,42 @@
 <template>
   <v-footer app class="sound-player">
     <!-- audio tag -->
-    <audio ref="audiofile" :src="file" style="display:none;"></audio>
+    <audio ref="audiofile" :src="trackUrl" style="display:none;"></audio>
     <!-- song info -->
     <v-row>
       <v-col cols="4">
         <v-toolbar flat color="rgba(0,0,0,0)">
           <v-avatar tile size="56">
-            <img src="http://localhost:8080/profile.jpg" alt="profile pic" />
+            <img :src="artistPicture" alt="profile pic" />
           </v-avatar>
           <div
             style="padding-left: 14px; padding-top: 14px; margin-right: 14px;"
           >
             <router-link to="/" class="song-name">
-              Song Name
+              {{ songName }}
             </router-link>
-            <router-link to="/" class="singer-name">
-              hi
+            <router-link
+              v-for="(artist, index) in artists"
+              :key="index"
+              :to="artist.href"
+              class="singer-name"
+            >
+              {{ artist.name }}
             </router-link>
           </div>
-          <a @click="saveToLikedSongs()">
+          <a @click="saveToLikedSongs()" v-if="!isSongIsLiked">
             <v-icon small title="save your liked songs" class="icons">
               mdi-heart-outline
+            </v-icon>
+          </a>
+          <a @click="saveToLikedSongs()" v-if="isSongIsLiked">
+            <v-icon
+              small
+              title="save your liked songs"
+              class="icons"
+              color="green"
+            >
+              mdi-heart
             </v-icon>
           </a>
         </v-toolbar>
@@ -29,19 +44,40 @@
 
       <v-col cols="5">
         <div class="audio-controls">
-          <a @click="shuffle()" title="shuffle" style="margin-right: 20px;">
+          <!-- shuffle -->
+          <a
+            @click="enableShuffle()"
+            v-if="!isShuffleEnabled"
+            title="shuffle"
+            style="margin-right: 20px;"
+          >
             <v-icon small class="icons">
               mdi-shuffle-variant
             </v-icon>
           </a>
-          <!-- Next -->
-          <a @click="next()" title="Previous" style="margin-right: 10px;">
+
+          <a
+            @click="disableShuffle()"
+            v-if="isShuffleEnabled"
+            title="shuffle"
+            style="margin-right: 20px;"
+          >
+            <v-icon small color="green">
+              mdi-shuffle-variant
+            </v-icon>
+          </a>
+          <!-- Previous -->
+          <a @click="previous()" title="Previous" style="margin-right: 10px;">
             <v-icon medium class="icons">
               mdi-skip-previous
             </v-icon>
           </a>
           <!-- Start and Pause -->
-          <a @click="pause()">
+          <a
+            @click="pauseAndPlay()"
+            v-if="isBuffering"
+            style="width: 36px; height: 36px;"
+          >
             <v-icon v-if="paused" large class="icons" title="play">
               mdi-play-circle-outline
             </v-icon>
@@ -49,16 +85,50 @@
               mdi-pause-circle-outline
             </v-icon>
           </a>
-          <!-- Previous -->
-          <a @click="previous()" title="Next" style="margin-left: 10px;">
+
+          <img
+            v-if="!isBuffering"
+            style="width: 36px; height: 36px; vertical-align: middle;"
+            src="/loadingPlay.gif"
+          />
+
+          <!-- Next -->
+          <a @click="next()" title="Next" style="margin-left: 10px;">
             <v-icon medium class="icons">
               mdi-skip-next
             </v-icon>
           </a>
 
-          <a @click="repeat()" title="repeat" style="margin-left: 20px;">
+          <a
+            @click="enableRepeat()"
+            v-if="!isRepeatEnabled && !isRepeatOnceEnabled"
+            title="Enable repeat"
+            style="margin-left: 20px;"
+          >
             <v-icon small class="icons">
               mdi-repeat
+            </v-icon>
+          </a>
+
+          <a
+            @click="enableRepeatOnce()"
+            v-if="isRepeatEnabled && !isRepeatOnceEnabled"
+            title="Enable repeat once"
+            style="margin-left: 20px;"
+          >
+            <v-icon small class="icons" color="green">
+              mdi-repeat
+            </v-icon>
+          </a>
+
+          <a
+            @click="disableRepeatOnce()"
+            v-if="!isRepeatEnabled && isRepeatOnceEnabled"
+            title="Disable repeat once"
+            style="margin-left: 20px;"
+          >
+            <v-icon small class="icons" color="green">
+              mdi-repeat-once
             </v-icon>
           </a>
         </div>
@@ -89,15 +159,60 @@
       <v-col cols="2" style="background: rgba(0, 0, 0, 0);">
         <!-- mute or change the volume-->
         <div style="padding-top: 20px;">
-          <a
-            @click="queue()"
+          <router-link
+            to="/webhome/collection/queue"
             title="queue"
-            style="margin-right: 20px; float: left;"
+            style="margin-right: 10px; float: left; text-decoration: none;"
           >
-            <v-icon small class="icons">
+            <v-icon
+              small
+              v-bind:class="{
+                'green-icon': isQueueOpened,
+                icons: !isQueueOpened
+              }"
+            >
               mdi-format-list-numbered-rtl
             </v-icon>
-          </a>
+          </router-link>
+
+          <!-- devices -->
+
+          <v-menu
+            offset-y
+            top
+            transition="slide-y-transition"
+            style="clear: left;"
+          >
+            <template v-slot:activator="{ on }">
+              <v-btn
+                :ripple="false"
+                id="no-background-hover"
+                text
+                v-on="on"
+                class="devices-icon"
+              >
+                <span class="mdi mdi-18px mdi-devices icons"></span>
+              </v-btn>
+            </template>
+
+            <v-list style="background-color: #282828 !important">
+              <v-list-item
+                v-for="(device, index) in devices"
+                :key="index"
+                v-on:click="chooseDevice(device._id)"
+              >
+                <v-list-item-title
+                  style="color: white;"
+                  v-bind:class="{
+                    'green-icon-w-hover': device._id == currentDeviceId
+                  }"
+                  >{{ index + 1 }} {{ device.device }}</v-list-item-title
+                >
+              </v-list-item>
+            </v-list>
+          </v-menu>
+
+          <!-- mute -->
           <a
             @click="mute()"
             title="Mute"
@@ -126,6 +241,15 @@
 </template>
 
 <script>
+/**
+ * The Sound player content after logging in.
+ * @version 1.0.0
+ */
+
+import { mapMutations, mapGetters, mapActions, mapState } from "vuex";
+import axios from "axios";
+//import io from 'socket.io-client';
+
 export const convertTimeHHMMSS = val => {
   //-val is the time passed from the start of the sound in integer seconds
   //-new Data(val * 1000) get a date from 1970 2:00:00 and advance it with milli seconds
@@ -138,44 +262,84 @@ export const convertTimeHHMMSS = val => {
 };
 
 export default {
-  name: "vue-audio",
-  props: {
-    autoPlay: {
-      type: Boolean,
-      default: false
-    },
-    loop: {
-      type: Boolean,
-      default: false
-    }
-  },
+  name: "soundplayer",
+
   computed: {
+    ...mapGetters("playlist", ["audio", "paused", "isQueueOpened"]),
+
     duration: function() {
       return this.audio ? convertTimeHHMMSS(this.totalDuration) : "";
-    }
+    },
+
+    ...mapState({
+      isSongIsLiked: state => state.track.liked,
+      trackUrl: state => state.track.trackUrl,
+      songName: state => state.track.trackName,
+      artists: state => state.track.trackArtists
+    })
   },
   data() {
     return {
-      file: "http://localhost:8080/example.mp3",
-      isMuted: false,
-      loaded: false,
-      playing: false,
-      paused: true,
+      //Audio info:
       currentTime: "00:00",
-      innerLoop: undefined,
-      audio: undefined,
       totalDuration: 0,
       volumeValue: 50,
       previousVolumeValue: 50,
       currentTimeInSec: 0,
+
+      //Flags:
+      isMuted: false,
+      isBuffering: false,
       isProgressBarPressed: false,
-      isVolumePressed: false
+      isVolumePressed: false,
+      isRepeatEnabled: false,
+      isShuffleEnabled: false,
+      isRepeatOnceEnabled: false,
+      isFirstSong: true,
+
+      //The song's info:
+      artistPicture: "/profile.jpg",
+      songId: undefined,
+
+      devices: undefined,
+      currentDeviceId: undefined,
+
+      token: "Bearer " + window.sessionStorage.userToken
     };
   },
   methods: {
-    saveToLikedSongs: function() {
-      //stub
+    ...mapMutations("playlist", ["setAudio", "setPaused", "setIsSongLoaded"]),
+    ...mapMutations("track", ["setLiked", "setTrackData", "setTrackUrl"]),
+    ...mapActions("playlist", ["pauseAndPlay"]),
+
+    /**
+     * choose the device you want.
+     *
+     * @public
+     */
+    chooseDevice: function(id) {
+      this.currentDeviceId = id;
     },
+
+    /**
+     * change the liked state of the song
+     *
+     * @public
+     */
+    saveToLikedSongs: function() {
+      if (!this.isSongIsLiked) {
+        this.setLiked(true);
+        //make a request to set the current song to the like ones.
+      } else {
+        this.setLiked(false);
+        //make a request to remove the current song from the like ones.
+      }
+    },
+    /**
+     * Update the volume
+     *
+     * @public
+     */
     updateVolume: function() {
       this.audio.volume = this.volumeValue / 100;
       if (this.volumeValue / 100 > 0) {
@@ -191,31 +355,115 @@ export default {
         }
       }
     },
+    /**
+     * Play the current track
+     *
+     * @public
+     */
     play: function() {
-      if (this.playing && !this.paused) return;
-      this.paused = false;
+      if (!this.paused) return;
+      this.setPaused(false);
       this.audio.play();
-      this.playing = true;
     },
-    pause: function() {
-      this.paused = !this.paused;
-      this.paused ? this.audio.pause() : this.audio.play();
-    },
+    /**
+     * get the next song
+     *
+     * @public
+     */
     next: function() {
-      //stub
+      this.isBuffering = false;
+      this.setPaused(true); //the sound will be paused upon changing the soruce
+
+      //TODO: is it the current song is the last one in the playlist ?
+      var temp = this;
+      //this timeout is for simulating the server delay
+      //TODO: remove this delay before deployment
+      setTimeout(function() {
+        //call updateSongInfo()
+        //TODO: change this to a url coming from a request.
+        temp.setTrackUrl(
+          "https://www.bensound.com/bensound-music/bensound-summer.mp3"
+        );
+      }, 1000);
     },
+    /**
+     * get the previous song
+     *
+     * @public
+     */
     previous: function() {
-      //stub
+      this.isBuffering = false;
+      this.setPaused(true); //the sound will be paused upon changing the soruce
+
+      //TODO: is it the current song is the first one in the playlist ?
+
+      var temp = this;
+      //this timeout to simulate the server delay
+      //TODO: remove this after delay before deployment
+      setTimeout(function() {
+        //call updateSongInfo()
+        //TODO: change this to a url coming from a request.
+        temp.setTrackUrl("/example.mp3");
+      }, 1000);
     },
-    shuffle: function() {
-      //stub
+    /**
+     * Enable the shuffle.
+     * Invoked after pressing shuffle button
+     * while it's disabled
+     *
+     * @public
+     */
+    enableShuffle: function() {
+      this.isShuffleEnabled = true;
+      //make a request to get a shuffled song
+      /* send a request to save the option on backend */
     },
-    repeat: function() {
-      //stub
+    /**
+     * Disable the shuffle.
+     * Invoked after pressing shuffle button
+     * while it's enabled
+     * 
+     * @public
+     */
+    disableShuffle: function() {
+      this.isShuffleEnabled = false;
+      //make a request to get a shuffled song
+      /* send a request to save the option on backend */
     },
-    queue: function() {
-      //stub
+    /**
+     * enable repeat
+     * 
+     * @public
+     */
+    enableRepeat: function() {
+      this.isRepeatEnabled = true;
+      /* send a request to save the option on backend */
     },
+    /**
+     * enable repeat once
+     * 
+     * @public
+     */
+    enableRepeatOnce: function() {
+      this.isRepeatEnabled = false;
+      this.isRepeatOnceEnabled = true;
+      /* send a request to save the option on backend */
+    },
+    /**
+     * disable repeat once
+     * 
+     * @public
+     */
+    disableRepeatOnce: function() {
+      this.isRepeatOnceEnabled = false;
+      /* send a request to save the option on backend */
+    },
+    /**
+     * mute the sound. Invoked when the sound icon
+     * is pressed or the volume slider went to 0 position.
+     * 
+     * @public
+     */
     mute: function() {
       this.isMuted = !this.isMuted;
       this.audio.muted = this.isMuted;
@@ -228,18 +476,35 @@ export default {
       this.volumeValue = this.isMuted ? 0 : this.previousVolumeValue;
       this.audio.volume = this.volumeValue / 100; //update the volume
     },
+    /**
+     * This handler is invoked after track is loaded
+     * 
+     * @public
+     */
     _handleLoaded: function() {
       //The HTMLMediaElement.readyState property indicates the readiness state of the media.
       // (this.audio.readyState >= 2) Data is available
       if (this.audio.readyState >= 2) {
-        if (this.autoPlay) this.play();
+        if (!this.isFirstSong) {
+          this.play();
+        } else {
+          this.isFirstSong = false;
+        }
 
-        this.loaded = true;
+        this.setIsSongLoaded(true);
+        this.isBuffering = true; //finished loading the next song.
+
         this.totalDuration = parseInt(this.audio.duration);
       } else {
         throw new Error("Failed to load sound file");
       }
     },
+    /**
+     * This handler is invoked when the track
+     * time is changed due to playing.
+     * 
+     * @public
+     */
     _handlePlayingUI: function() {
       //this.audio.currentTime gets the current time of the playing track
       //in terms of how many seconds have been passed.
@@ -251,115 +516,268 @@ export default {
 
       this.currentTime = convertTimeHHMMSS(currTime);
     },
-    _handlePlayPause: function(e) {
-      if (e.type === "pause" && this.playing === false) {
-        this.paused = true;
+    /**
+     * This handler is invoked when the track is paused
+     * 
+     * @public
+     */
+    _handlePause: function() {
+      this.setPaused(true); //the song is paused flag
+    },
+    /**
+     * This handler is invoked when the track is finsihed
+     * 
+     * @public
+     */
+    _handleEndedSong: function() {
+      if (this.isRepeatOnceEnabled) {
+        this.play();
+      } else if (this.isRepeatEnabled) {
+        //if (is the current song is the last song in the playlist)?
+        //change "file" to the link of the first song of the playlist,
+        //then after loading in the loaded handler: invoke play()
       }
     },
+    /**
+     * This handler is invoked when the track started
+     * buffering.
+     * 
+     * @public
+     */
+    _handlerWaiting: function() {
+      this.isBuffering = false;
+    },
+    /**
+     * This handler is invoked when track insihed buffering
+     * 
+     * @public
+     */
+    _handlePlayingAfterBuffering: function() {
+      this.isBuffering = true;
+    },
+    /**
+     * This handler is invoked after 
+     * pressing down the space key
+     * 
+     * @public
+     */
+    _handleSpaceDown: function(e) {
+      if (e.code === "Space") {
+        e.preventDefault(); //this is just to prevent the space from scrolling
+      }
+    },
+    /**
+     * This handler is invoked after 
+     * pressing up the space key
+     * 
+     * @public
+     */
+    _handleSpaceUp: function(e) {
+      if (e.code === "Space") {
+        if (!this.isBuffering) return;
+        this.pauseAndPlay();
+      }
+    },
+    /**
+     * This is the initialization function
+     * which is executed only after the 
+     * soundplayer is loaded/mounted
+     * 
+     * @public
+     */
     init: function() {
+      this.isBuffering = true; //I don't want a loading icon upon the loading of the page.
+
+      //set the listeners:
       this.audio.addEventListener("timeupdate", this._handlePlayingUI);
       //The loadeddata event is fired when the frame at the current playback
       //position of the media has finished loading; often the first frame.
       this.audio.addEventListener("loadeddata", this._handleLoaded);
-      this.audio.addEventListener("pause", this._handlePlayPause);
-      this.audio.addEventListener("play", this._handlePlayPause);
+      this.audio.addEventListener("pause", this._handlePause);
+      this.audio.addEventListener("ended", this._handleEndedSong); //the song is ended
+
+      this.audio.addEventListener("waiting", this._handlerWaiting); //the song is stopped due to buffering
+      this.audio.addEventListener("playing", this._handlePlayingAfterBuffering);
+
+      //space key to pause and play the song
+      document.addEventListener("keyup", this._handleSpaceUp);
+      document.addEventListener("keydown", this._handleSpaceDown);
+
+      //configure the volume
       this.audio.volume = this.volumeValue / 100;
       this.volumeLevelStyle = `width:${this.volumeValue}%;`;
+
+      axios({
+        method: "get",
+        url: "/v1/me/player/tracks/recently-played",
+        headers: {
+          Authorization: this.token
+        }
+      }).then(response => {
+        var lastSong = response.data.items;
+        lastSong = lastSong[lastSong.length - 1].track;
+
+        var payload = {
+          name: lastSong.name,
+          href: "",
+          artists: lastSong.artists,
+          album: {
+            images: [{ url: "lalala" }],
+            id: "1"
+          }
+        };
+        this.setTrackData(payload);
+        this.songId = lastSong.id;
+
+        axios({
+          method: "get",
+          url: "/v1/me/tracks/contains",
+          params: {
+            ID: [this.songId]
+          },
+          headers: {
+            Authorization: this.token
+          }
+        }).then(response => {
+          this.setLiked(response.data[0]);
+        });
+
+        //request the song mp3 file
+        axios({
+          method: "post",
+          url: "/v1/me/player/tracks/" + this.songId,
+          data: {
+            contextId: "1212", //Get the context Id->Id in the URL
+            context_type: "album", //get it
+            context_url: "url", //browser URL
+            device: this.currentDeviceId
+          },
+          headers: {
+            Authorization: this.token
+          }
+        }).then(
+          //STUB because there's no songs now
+          this.setTrackUrl("/example.mp3") //must be the song link "/v1/me/player/tracks/" + this.songId
+        );
+      });
+
+      //save the browser
+
+      //get the browsers.
+      axios({
+        method: "patch",
+        url: "/v1/me/player/devices",
+        data: {
+          device: "Chrome" //TODO: get the browser name
+        },
+        headers: {
+          Authorization: this.token
+        }
+      }).then(response => {
+        this.devices = response.data.devices;
+        this.currentDeviceId = this.devices[this.devices.length - 1]._id;
+      });
+
+      //Stub:
+      /*
+      var socket = io.connect(axios.defaults.baseURL);
+
+      socket.on("welcome", function() {
+        socket.emit("disconnect", {
+          id: this.currentDeviceId,
+          volumeValue: this.volumeValue,
+          currentTimeInSec: this.currentTimeInSec,
+          isRepeatEnabled: this.isRepeatEnabled,
+          isShuffleEnabled: this.isShuffleEnabled,
+          isRepeatOnceEnabled: this.isRepeatOnceEnabled,
+          seek: this.seek
+        });
+      });
+      */
     },
+    /**
+     * returns the audio tag element.
+     * 
+     * @public
+     */
     getAudio: function() {
       return this.$el.querySelectorAll("audio")[0];
     },
+    /**
+     * This handler is invoked after 
+     * pressing down on the progress bar
+     * 
+     * @public
+     */
     progressBarPressed: function() {
       this.isProgressBarPressed = true;
     },
+    /**
+     * This handler is invoked after 
+     * pressing up on the progress bar
+     * 
+     * @public
+     */
     progressBarReleased: function() {
       this.audio.currentTime = this.currentTimeInSec;
       this.isProgressBarPressed = false;
     },
+    /**
+     * This handler is invoked after 
+     * pressing down on the volume bar
+     * 
+     * @public
+     */
     volumeBarPressed: function() {
       this.isVolumeBarPressed = true;
     },
+    /**
+     * This handler is invoked after 
+     * pressing up on the volume bar
+     * 
+     * @public
+     */
     volumeBarReleased: function() {
       this.updateVolume();
       this.isVolumeBarPressed = false;
     }
   },
   mounted: function() {
-    this.audio = this.getAudio();
-    this.innerLoop = this.loop;
+    this.setAudio(this.getAudio());
     this.init();
   },
   beforeDestroy: function() {
     this.audio.removeEventListener("timeupdate", this._handlePlayingUI);
     this.audio.removeEventListener("loadeddata", this._handleLoaded);
-    this.audio.removeEventListener("pause", this._handlePlayPause);
-    this.audio.removeEventListener("play", this._handlePlayPause);
+    this.audio.removeEventListener("pause", this._handlePause);
+    this.audio.removeEventListener("ended", this._handleEndedSong);
+
+    this.audio.removeEventListener("waiting", this._handlerWaiting);
+    this.audio.removeEventListener(
+      "playing",
+      this._handlePlayingAfterBuffering
+    );
+
+    document.removeEventListener("keyup", this._handleSpaceUp);
+    document.removeEventListener("keydown", this._handleSpaceDown);
+
+    // STUB
+    /*
+    var thisTemp = this;
+    axios({
+      method: "delete",
+      url: "/api/v1/me/player/devices",
+      data: {
+        deviceId: thisTemp.currentDeviceId
+      }
+    });
+    */
   }
 };
 </script>
 
-<style scoped>
-.sound-player {
-  height: 90px;
-  background-color: #282828 !important;
-  padding: 0px 16px 0px 16px;
-}
-
-.song-name {
-  text-decoration: none;
-  font-family: Helvetica, Arial, sans-serif;
-  white-space: nowrap;
-  font-size: 14px;
-  line-height: 20px;
-  letter-spacing: 0.015em;
-  text-align: left;
-  user-select: none;
-  color: #fff;
-  position: relative;
-  text-transform: uppercase;
-  display: block;
-}
-
-.singer-name {
-  text-decoration: none;
-  white-space: nowrap;
-  font-size: 12px;
-  line-height: 16px;
-  letter-spacing: 0.015em;
-  position: relative;
-  color: #b3b3b3;
-}
-
-.singer-name:hover {
-  color: white;
-}
-
-.audio-controls {
-  display: block;
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-.icons {
-  color: #b3b3b3;
-}
-
-.icons:hover {
-  color: white;
-}
-
-.time {
-  margin-top: 20px;
-  color: #b3b3b3;
-  text-transform: none;
-  font-family: Helvetica, Arial, sans-serif;
-  vertical-align: baseline;
-  font-size: 11px;
-  line-height: 16px;
-  letter-spacing: 0.015em;
-  min-width: 40px;
-  text-align: center;
-}
+<style lang="scss" scoped>
+@import "./style.scss";
 </style>
 
 <style lang="scss" scoped>

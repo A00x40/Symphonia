@@ -1,24 +1,65 @@
 const express = require('express');
-const path = require('path');
 const authController = require('../controllers/authController');
 const meController = require('../controllers/meController');
-
-// const authController = require('../controllers/authController');
 const followController = require('../controllers/followController');
 const libraryController = require('../controllers/libraryController');
-
 const playlistController = require('./../controllers/playlistController');
+const bodyParser = require('body-parser');
 
 const router = express.Router();
 router.use(authController.protect);
-router.get('/player/tracks/:track_id', meController.playTrack);
+// don't change anyline of my code again there is no problem to put these routes here if there is a problem with you it must be from your work not from the postion of my routes
 
-// this just for testing the player
-router.get('/gamed', function(req, res) {
-  res.sendFile(path.join(`${__dirname}/../views/index.html`));
-});
-
+//save shuffle
+router.patch('/player/shuffle', meController.shuffle);
+//save volume
+router.patch('/player/volume', meController.volume);
+//save repeat
+router.patch('/player/repeat', meController.repeat);
+//save repeatOnce
+router.patch('/player/repeatOnce', meController.repeatOnce);
+//save seek
+router.patch('/player/seek', meController.seek);
+//save devices
+router.patch('/player/devices', meController.pushDevices);
+//go to previous track
+router.post('/player/previous', meController.previous);
+//go to next track
+router.post('/player/next', meController.next);
+//add to queue
+router.post('/player/queue', meController.pushQueue);
+//delete from queue
+router.delete('/player/queue', meController.popQueue);
+//delete device
+router.delete('/player/devices', meController.popDevices);
+//get devices
+router.get('/player/devices', meController.getDevices);
+//get currently playing
+router.get('/player/currently-playing', meController.getCurrentlyPlaying);
+//get queue
+router.get('/player/queue', meController.getQueue);
+//play the track
+router.get(
+  '/player/tracks/:track_id',
+  bodyParser.raw({ type: 'application/json' }),
+  meController.playTrack
+);
+//get top artist and top tracks
 router.get('/top/:type', meController.topTracksAndArtists);
+//get recent tracks
+router.get('/recently-played', meController.recentlyPlayed);
+//get user privte profile
+router.get('/', meController.currentUserProfile);
+router.put('/', meController.updateCurrentUserProfile);
+
+//router.batch('/v1/me/player/play',);
+//premium with creditcard
+router.get('/checkout-session', meController.getCheckoutSession);
+router.post(
+  '/webhook-checkout',
+  bodyParser.raw({ type: 'application/json' }),
+  meController.webhookCheckout
+);
 
 // section: follow routes
 // Description: check if the current user follows a another user(partist or normal user)
@@ -63,8 +104,9 @@ router.put('/tracks', libraryController.saveCurrentUserTracks);
 //Description: Get a list of the playlists owned or followed by the current Symphonia user.
 router.get('/playlists', playlistController.getCurrentUserPlaylists);
 
-// put it in the back it is a must: please be careful puting them a head causes alot of problems
-router.get('/', meController.currentUserProfile);
+//get public profile
+// hint: moved the end of file to avoid confusion /name routes like /following /playlists
+// albums
 router.get('/:user_id', meController.userProfile);
 
 module.exports = router;

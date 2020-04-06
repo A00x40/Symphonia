@@ -21,7 +21,23 @@ const slugify = require('slugify');
 
 // 2. the file paths will be stored in req.files
 //TODO: test this class
+/**
+ * class that is used to handle file uploading and saving
+ * @example
+ * let uploadBuilder = new UploadBuilder();
+ * uploadBuilder.addfileField('icon', 'name', '', 1);
+ * uploadBuilder.addfileField('icon_md', 'name', '_md', 1);
+ * uploadBuilder.addTypeFilter('image/jpeg');
+ * uploadBuilder.setPath(
+ *   path.resolve(__dirname, '..') + '/assets/images/categories'
+ * let f_uploader = uploadBuilder.constructUploader();
+ * router.post('/categories', f_uploader, browseController.createCategory);
+ * );
+ */
 class UploadBuilder {
+  /**
+   * @constructor
+   */
   constructor() {
     this.fileFilter = [];
     this.storage = null;
@@ -33,11 +49,28 @@ class UploadBuilder {
     this.eventEmmiter = null;
   }
 
+  /**
+   * @summary not working right now
+   * @param {String} eventEmmiter
+   * @param {String} action
+   */
   addEventEmmiter(eventEmmiter, action) {}
+  /**
+   * @summary - sets the path where the files should be stored
+   * @param {String} storePath - the path where the files should be stored
+   * @returns {void}
+   */
   setPath(storePath) {
     this.filePath = storePath;
   }
 
+  /**
+   *
+   * @param {string} fieldName the fieldName like icon or so in which the file is stored
+   * @param {string} saveByReqName the field in the request whose value is used to name the file
+   * @param {string} prefix optional-any prefix you want to add to the filename: it is added before extension
+   * @param {number} maxCount the maximum count of fields to expect in usually one if one file is sent and not an array
+   */
   addfileField(fieldName, saveByReqName, prefix = '', maxCount = 1) {
     this.fileFields.push({
       name: fieldName,
@@ -49,12 +82,27 @@ class UploadBuilder {
       prefix: prefix
     });
   }
-  /*
-   *@param {typeFilter} can be  image/jpeg or image/png
+  /**
+   * @returns {Map} it returns a map where key:field name in the request and value:{saveByReqName:'name', maxCount:1, prefix:'md}
+   */
+  getFieldsMap() {
+    return this.saveByReqName;
+  }
+  /**
+   *@param {string} typeFilter can be  image/jpeg or image/png ...etc
    */
   addTypeFilter(typeFilter) {
-    this.fileFilter.push(typeFilter);
+    this.mimeTypes.push(typeFilter);
   }
+  /**
+   * @returns {Array} - returns the types it is going to filter
+   */
+  getTypeFilters() {
+    return this.mimeTypes;
+  }
+  /**
+   * @returns {function} the ready to use before route middleware
+   */
   constructUploader() {
     let saveByReqName = this.saveByReqName;
     this.storage = multer.diskStorage({
@@ -63,12 +111,10 @@ class UploadBuilder {
       },
       filename: function(req, file, cb) {
         // look for the extension
-        console.log(file);
         let i = file.mimetype.search('/');
         let ext = file.mimetype.substring(i + 1, file.mimetype.length);
 
         const map = new Map(Object.entries(req.body));
-        console.log(map);
         const f_name =
           map.get(saveByReqName.get(file.fieldname).saveByReqName) +
           saveByReqName.get(file.fieldname).prefix;
@@ -80,6 +126,7 @@ class UploadBuilder {
     function filter1(req, file, next) {
       // reject a file
       // i have the problem to check for fieldTypes
+      console.log(mimeTypes);
       let found = false;
       if (mimeTypes.length == 0) found = true; // no types to filter
       for (let index = 0; index < mimeTypes.length; index++) {
@@ -89,10 +136,11 @@ class UploadBuilder {
           break;
         }
       }
+      console.log(found);
       if (found) {
         next(null, true);
       } else {
-        next(new appError("error file type is n't allowed", 400), false);
+        return next(new appError("error file type is n't allowed", 400), false);
       }
     }
     this.uploader = multer({
@@ -101,6 +149,9 @@ class UploadBuilder {
     });
     return this.uploader.fields(this.fileFields);
   }
+  /**
+   * @returns {function} the ready to use before route middleware
+   */
   getUploader() {
     return this.uploader.fields(this.fileFields);
   }

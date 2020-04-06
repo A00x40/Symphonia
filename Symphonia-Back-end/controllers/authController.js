@@ -16,16 +16,15 @@ const createSendToken = (user, statusCode, res) => {
   user.__v = undefined;
   user.followedUsers = undefined;
   res.status(statusCode).json({
-    status: 'success',
-    data: {
-      token,
-      user
-    }
+    token,
+    user
   });
 };
 exports.signup = catchAsync(async (req, res, next) => {
   // validate with JOI as a first layer of validation
   await validate(req.body);
+  // get the base url for the server
+  const url = `${req.protocol}://${req.get('host')}`;
   // insert the user data in the database
   const newUser = await User.create({
     ..._.pick(req.body, [
@@ -37,9 +36,11 @@ exports.signup = catchAsync(async (req, res, next) => {
       'gender',
       'type'
     ]),
-    passwordConfirm: req.body.password
+    passwordConfirm: req.body.password,
+    imageUrl: `${url}/api/v1/images/users/default.png`
   });
-  const url = `${req.protocol}://${req.get('host')}`;
+  console.log(newUser);
+
   await new Email(newUser, url).sendWelcome();
 
   createSendToken(newUser, 201, res);
@@ -60,6 +61,22 @@ exports.login = catchAsync(async (req, res, next) => {
   user.last_login = Date.now();
   await user.save({ validateBeforeSave: false });
   createSendToken(user, 200, res);
+});
+
+exports.checkEmail = catchAsync(async (req, res, next) => {
+  const { email } = req.body;
+  // Check if email exists
+  if (!email) {
+    return next(new AppError('Please provide an email to check', 400));
+  }
+  // Check if user exists
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(200).json({ exists: false });
+  }
+  // If everything ok, send type of user to client
+  res.status(200).json({ exists: true, type: user.type });
 });
 exports.googleOauth = catchAsync(async (req, res, next) => {
   if (req.user.status === 201) {
@@ -123,9 +140,9 @@ exports.protect = catchAsync(async (req, res, next) => {
   req.user = currentUser;
   next();
 });
-exports.restrictTo = (...roles) => {
+exports.restrictTo = (...types) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    if (!types.includes(req.user.type)) {
       return next(
         new AppError('You do not have permission to perform this action', 403)
       );
@@ -149,11 +166,11 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   });
   // 3) Send it to user's email
   try {
-    const resetURL = `${req.protocol}://${req.get(
-      'host'
-    )}password-reset/change/${resetToken}`;
+    const resetURL =
+      `${req.protocol}://${req.hostname}` +
+      `/password-reset/change/${resetToken}`;
+    __logger.info(resetURL);
     await new Email(user, resetURL).sendPasswordReset();
-
     res.status(200).json({
       status: 'success',
       message: 'Token sent to email!'

@@ -6,8 +6,11 @@ const handleCastErrorDB = err => {
 };
 
 const handleDuplicateFieldsDB = err => {
-  const value = err.errmsg.match(/(["'])(\\?.)*?\1/)[0];
-  const message = `Duplicate field value: ${value}. Please use another value!`;
+  const value = err.errmsg
+    .match(/(["'])(\\?.)*?\1/)[0]
+    .split('"')
+    .join('');
+  const message = `${value} already exists`;
   return new AppError(message, 400);
 };
 
@@ -43,7 +46,8 @@ const sendErrorProd = (err, res) => {
   if (err.isOperational) {
     res.status(err.statusCode).json({
       status: err.status,
-      message: err.message
+      message: err.message,
+      msg: err.msg
     });
 
     // Programming or other unknown error: don't leak error details
@@ -61,8 +65,6 @@ const sendErrorProd = (err, res) => {
 };
 
 module.exports = (err, req, res, next) => {
-  // console.log(err.stack);
-
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
