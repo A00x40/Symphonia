@@ -77,3 +77,23 @@ sudo ufw allow 3000
 
 # enable firewall
 sudo ufw --force enable
+
+#----------------
+# SSL & HTTPS
+#----------------
+
+#Add Certbot PPA
+
+sudo apt-get update
+sudo apt-get install software-properties-common
+sudo add-apt-repository universe
+sudo add-apt-repository ppa:certbot/certbot
+sudo apt-get update
+
+# Install Certbot
+
+sudo apt-get install certbot python-certbot-nginx
+
+# Run this command to get a certificate and have Certbot edit your Nginx configuration automatically to serve it, turning on HTTPS access in a single step.
+
+sudo certbot --nginx
