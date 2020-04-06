@@ -1,15 +1,17 @@
 server {
-        listen 80 default_server;
-        listen [::]:80 default_server;
 
-        access_log /var/log/nginx/access.log;
-        error_log /var/log/nginx/error.log;
+        listen [::]:443 ssl ipv6only=on;                     
+        listen 443 ssl;
+        ssl_certificate /etc/letsencrypt/live/zasymphonia.ddns.net/fullchain.pem; # managed by Certbot
+        ssl_certificate_key /etc/letsencrypt/live/zasymphonia.ddns.net/privkey.pem; # managed by Certbot                     
+        include /etc/letsencrypt/options-ssl-nginx.conf;                     
+        ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;     
 
         root /home/ubuntu/Symphonia-FE/dist;
 
         index index.html index.htm index.nginx-debian.html;
 
-        server_name _;
+        server_name zasymphonia.ddns.net;
 
         location / {
                  try_files $uri $uri /index.html?/$request_uri;
@@ -27,5 +29,23 @@ server {
                  proxy_set_header Upgrade $http_upgrade;
                  proxy_set_header Connection "upgrade";
         }
+
+      
+
+}
+
+server {
+    if ($host = zasymphonia.ddns.net) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+        listen 80 default_server;
+        listen [::]:80 default_server;
+
+        server_name zasymphonia.ddns.net;
+    return 404; # managed by Certbot
+
+
 }
 
