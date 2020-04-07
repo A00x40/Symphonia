@@ -1,6 +1,6 @@
-#----------------------
+#---------------------------------
 #  GCC/g++ compilers and libraries
-#----------------------
+#---------------------------------
 
 # reload local package database
 sudo apt-get update
@@ -97,3 +97,38 @@ sudo apt-get install certbot python-certbot-nginx
 # Run this command to get a certificate and have Certbot edit your Nginx configuration automatically to serve it, turning on HTTPS access in a single step.
 
 sudo certbot --nginx
+
+# allow port 443 for SSL
+sudo ufw allow 443
+
+#----------------------
+# Dynamic Update Client
+#----------------------
+
+cd /usr/local/src/
+sudo wget http://www.no-ip.com/client/linux/noip-duc-linux.tar.gz
+sudo tar xf noip-duc-linux.tar.gz
+cd noip-2.1.9-1/
+sudo make install
+
+#---------------
+# JAVA & Jenkins
+#---------------
+
+# Install Java
+sudo apt install default-jre 
+
+# Add the repository key to the system:
+wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | sudo apt-key add -
+# When the key is added, the system will return OK.
+
+# Append the Debian package repository address to the server’s sources.list:
+sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+
+sudo apt-get update
+
+# Install Jenkins and its dependencies:
+sudo apt-get install jenkins
+
+# By default, Jenkins runs on port 8080
+sudo ufw allow 8080
