@@ -1,0 +1,25 @@
+Deploying Steps
+1 - Launch Linux Instance and Connect to it (Mentioned in Server Instance Setup File)
+2 - Pre-requisites Installations  (Installed First time only mentioned in Pre-requisites Installations File)
+3 - Update Nginx default File
+    sudo nano /etc/Nginx/sites-enabled/default (Then Replace Default file with configuration in Nginx Default File )
+    
+4 - # Deploying and Running BackEnd
+    cd ~
+    sudo git clone https://github.com/Etshawy1/Symphonia-Back-end #(First Time only)  
+    sudo chown -R $USER Symphonia-Back-end                        #(First Time only Give User write access on backend dir)
+    cd Symphonia-Back-end
+    sudo git pull                                                 # Enter GitHub Username and Password
+    npm i
+    sudo pm2 start home.js                                        #(First time only)  - (If not first time run) sudo pm2 restart home.js 
+    
+5 - # Deploying and Running FrontEnd
+    cd ~
+    sudo git clone https://github.com/Moodrammer/Symphonia-FE     #(First Time only)
+    cd Symphonia-FE
+    sudo git pull                                                 # Enter GitHub Username and Password
+    npm install
+    npm run build
+    sudo service nginx restart
+
+     
