@@ -132,3 +132,10 @@ sudo apt-get install jenkins
 
 # By default, Jenkins runs on port 8080
 sudo ufw allow 8080
+
+#---------
+# Apache2
+#---------
+
+sudo apt install apache2
+sudo ufw allow 'Apache Full'
