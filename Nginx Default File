@@ -57,6 +57,12 @@ server {
                  proxy_http_version 1.1;
                  proxy_set_header Upgrade $http_upgrade;
                  proxy_set_header Connection "upgrade";
+                 
+                 # buffers, necessary for proper communication to prevent 502s
+                 proxy_buffer_size 2048k;
+                 proxy_buffers 4 4096k;
+                 proxy_busy_buffers_size 4096k;
+
         }
 
 }
