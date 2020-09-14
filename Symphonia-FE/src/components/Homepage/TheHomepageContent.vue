@@ -18,7 +18,7 @@
           Millions of songs. No credit card needed.
         </h4>
 
-        <router-link to="/download" class="download-button-large">
+        <router-link to="/" class="download-button-large">
           get symphonia free
         </router-link>
       </v-container>
@@ -27,7 +27,7 @@
 </template>
 
 <script>
-import getDeviceSize from "../../mixins/getDeviceSize"
+import getDeviceSize from "../../mixins/getDeviceSize";
 
 /**
  * The Home page body content before logging in.

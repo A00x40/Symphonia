@@ -1,5 +1,7 @@
 <template>
   <div>
+    <v-progress-linear v-if="loading" indeterminate stream height="4" fixed>
+    </v-progress-linear>
     <!-- Header of Sign Up page  -->
     <symphonia-Header></symphonia-Header>
 
@@ -9,7 +11,17 @@
       <v-content max-width="500px">
         <v-row justify="center">
           <v-col cols="12">
-            <!-- Facebook and Google SignUp division -->
+            <!-- Facebook SignUp division -->
+            <!-- alert to show any errors returning from back server -->
+            <v-alert
+              id="backerr-alert-fb"
+              v-if="fbErrorState"
+              color="rgba(217, 17, 17, 0.80)"
+            >
+              <v-row justify="center" class="white--text">
+                <p style="text-align: center;">{{ fbErrorMessage }}</p>
+              </v-row>
+            </v-alert>
             <v-row justify="center" class="mb-5">
               <v-col cols="6">
                 <!-- Facebook button -->
@@ -22,19 +34,9 @@
                     style="font-size: 14px"
                     large
                     block
-                    >Sign up with Facebook</v-btn>
-                </v-row>
-                <!-- Google button -->
-                <v-row justify="center" class="my-0">
-                    <v-btn
-                    id="ggl-sign-btn"
-                    rounded
-                    color="#dd4b39"
-                    class="white--text"
-                    style="font-size: 14px"
-                    large
-                    block
-                    ><div class="px-2"> Sign up with Google </div></v-btn>
+                    @click="signUpWithFacebook"
+                    >Sign up with Facebook</v-btn
+                  >
                 </v-row>
               </v-col>
             </v-row>
@@ -53,6 +55,13 @@
                 <span style="font-size:14px;">or</span>
                 <v-divider></v-divider>
               </v-row>
+
+              <!-- alert to show any errors returning from back server -->
+              <v-alert id="backerr-alert" v-if="errorState" color="red">
+                <v-row justify="center" class="white--text">
+                  <p style="text-align: center;">{{ errorMessage }}</p>
+                </v-row>
+              </v-alert>
 
               <div
                 class="text-center mb-3"
@@ -121,7 +130,7 @@
                 </v-col>
 
                 <v-col cols="6" class="pb-1">
-                  <v-overflow-btn
+                  <v-select
                     placeholder="month"
                     outlined
                     width="90%"
@@ -129,7 +138,7 @@
                     :rules="monthRules"
                     v-model="userData.monthSelected"
                     id="birth-month"
-                  ></v-overflow-btn>
+                  ></v-select>
                 </v-col>
 
                 <v-col cols="3" class="pr-0 pb-1">
@@ -153,12 +162,18 @@
                   id="gender"
                 >
                   <v-radio label="Male" value="male" id="male-select"></v-radio>
-                  <v-radio label="Female" value="female" id="female-select"></v-radio>
+                  <v-radio
+                    label="Female"
+                    value="female"
+                    id="female-select"
+                  ></v-radio>
                 </v-radio-group>
               </v-row>
-              <v-divider/>
+              <v-divider />
               <v-row justify="center" class="mt-2">
-                <h2>How do you like to use Symphonia ?</h2>
+                <h2 style="text-align: center;">
+                  How do you like to use Symphonia ?
+                </h2>
               </v-row>
               <!-- type radio group -->
               <v-row justify="center">
@@ -169,10 +184,32 @@
                   v-model="userData.type"
                   id="type"
                 >
-                  <v-radio label="Listener" value="user" color="green" id="listener-select"></v-radio>
-                  <v-radio label="Artist" value="artist" color="red" id="artist-select"></v-radio>
+                  <v-radio
+                    label="Listener"
+                    value="user"
+                    color="green"
+                    id="listener-select"
+                  ></v-radio>
+                  <v-radio
+                    label="Artist"
+                    value="artist"
+                    color="indigo lighten-1"
+                    id="artist-select"
+                  ></v-radio>
                 </v-radio-group>
               </v-row>
+              <v-alert
+                v-if="userData.type == 'artist'"
+                outlined
+                color="indigo"
+                class="white--text"
+              >
+                <div style="text-align: center;">
+                  An email with an attached activation link will be sent to the
+                  email address you provided inorder to activate your artist
+                  account
+                </div>
+              </v-alert>
               <!-- Sign up button -->
               <v-row justify="center">
                 <v-col cols="8" class="py-2">
@@ -184,14 +221,22 @@
                     block
                     large
                     @click="submitForm"
-                  >Sign up</v-btn>
+                    >Sign up</v-btn
+                  >
                 </v-col>
               </v-row>
               <!-- link to the Login page -->
               <v-row justify="center">
                 <span class="text--center">
                   Already Have an account?
-                  <router-link to="/Login" class="green--text">Log in</router-link>
+                  <router-link
+                    :to="{
+                      path: '/login',
+                      query: { redirect: this.$route.query.redirect }
+                    }"
+                    class="green--text"
+                    >Log in
+                  </router-link>
                 </span>
               </v-row>
             </v-form>
@@ -204,8 +249,14 @@
 
 <script>
 import symphoniaHeader from "@/components/SymphoniaHeader.vue";
-import isLoggedIn from "@/mixins/userService"
+import getuserType from "@/mixins/userService/getuserType";
+import axios from "axios";
 
+/**
+ * This page is used to register the user to our website
+ * @displayName Sign Up
+ * @example [none]
+ */
 export default {
   components: {
     symphoniaHeader
@@ -225,6 +276,11 @@ export default {
         gender: "",
         type: ""
       },
+      //Handling back server errors data
+      errorMessage: "",
+      errorState: false,
+      fbErrorState: false,
+      fbErrorMessage: "",
       //Set of rules for validation
       emailRules: [
         v => !!v || "Please enter your email",
@@ -245,7 +301,9 @@ export default {
       monthRules: [v => !!v || "Please enter your birth month"],
       usernameRules: [v => !!v || "What should we call you?"],
       genderRules: [v => !!v || "Please indicate your gender"],
-      typeRules: [v => !!v || "Do you wish to sign up as a listener or an artist"],
+      typeRules: [
+        v => !!v || "Do you wish to sign up as a listener or an artist"
+      ],
 
       //items and data
       item: [
@@ -261,9 +319,11 @@ export default {
         "October",
         "November",
         "December"
-      ]
+      ],
+      loading: false
     };
   },
+  mixins: [getuserType],
   //Taken from : https://stackoverflow.com/questions/47213703/vuetify-form-validation-defining-es6-rules-for-matching-inputs
   computed: {
     /**
@@ -287,25 +347,17 @@ export default {
       for (monthnumber = 1; monthnumber < this.item.length; monthnumber++) {
         if (this.item[monthnumber - 1] == this.userData.monthSelected) break;
       }
-      if(monthnumber >= 1 && monthnumber <= 9) {
-        if(this.userData.daySelected >= 1 && this.userData.daySelected <= 9)
+      if (monthnumber >= 1 && monthnumber <= 9) {
+        if (this.userData.daySelected >= 1 && this.userData.daySelected <= 9)
           return `${this.userData.yearSelected}-0${monthnumber}-0${this.userData.daySelected}`;
         else
           return `${this.userData.yearSelected}-0${monthnumber}-${this.userData.daySelected}`;
-      }      
-      else {
-        if(this.userData.daySelected >= 1 && this.userData.daySelected <= 9)
+      } else {
+        if (this.userData.daySelected >= 1 && this.userData.daySelected <= 9)
           return `${this.userData.yearSelected}-${monthnumber}-0${this.userData.daySelected}`;
         else
-          return `${this.userData.yearSelected}-${monthnumber}-${this.userData.daySelected}`;  
+          return `${this.userData.yearSelected}-${monthnumber}-${this.userData.daySelected}`;
       }
-    }
-  },
-  mixins: [isLoggedIn],
-  created() {
-    //check if the user is logged in
-    if(this.isLoggedIn() == true){
-      this.$router.push("/")
     }
   },
   methods: {
@@ -332,20 +384,111 @@ export default {
      * @public
      */
     submitForm() {
-      if (this.$refs.userDataForm.validate() && (this.userData.email == this.userData.emailToMatch)) {
+      //clear the back error message & alert
+      this.errorMessage = "";
+      this.errorState = false;
+      this.fbErrorMessage = "";
+      this.fbErrorState = false;
+      if (
+        this.$refs.userDataForm.validate() &&
+        this.userData.email == this.userData.emailToMatch
+      ) {
+        this.loading = true;
         //Store the user's date of birth in the store
         this.$store.commit("setuserDOB", this.DateOfBirth);
         //This action returns a promise to show whether the user had sighned up successfully or not
         this.$store
           .dispatch("registerUser", this.userData)
-          .then(() => {
-            this.$router.push("/Login");
+          .then(userType => {
+            if (userType == "artist") {
+              this.$router.push("webhome/home");
+            } else {
+              this.$router.push(this.$route.query.redirect || "/webhome/home");
+            }
           })
           //if an error object was caught temporarily display it in the console
           .catch(error => {
-            console.log(error);
+            this.loading = false;
+            this.$vuetify.goTo(0, { duration: 1000 });
+            if (error.status == "fail") {
+              this.errorMessage = error.msg;
+              this.errorState = true;
+            } else if (error.status == "error") {
+              this.errorMessage = "Please try again later";
+              this.errorState = true;
+            }
           });
+      } else {
+        this.$vuetify.goTo(0, { duration: 1000 });
       }
+    },
+    /**
+     * @public
+     * A function used to request the access token , send it to the server,
+     * then retrieve the user data from the server to register the user
+     */
+    signUpWithFacebook() {
+      this.errorMessage = "";
+      this.errorState = false;
+      this.fbErrorState = false;
+      this.fbErrorMessage = "";
+      window.FB.login(
+        response => {
+          if (response.status == "connected") {
+            this.loading = true;
+            this.sendAccessToken(response.authResponse.accessToken);
+          } else {
+            this.fbErrorState = true;
+            this.fbErrorMessage =
+              "cannot connect to facebook ... Please try again later";
+          }
+        },
+        { scope: "public_profile,email" }
+      );
+    },
+    /**
+     * @public
+     * A function to send facebook access token to the server
+     * @param {string} FBAccessToken - The access token used by the server to access the user's facebook data
+     */
+    sendAccessToken(FBAccessToken) {
+      axios
+        .post("/v1/users/auth/facebook/Symphonia", {
+          access_token: FBAccessToken
+        })
+        .then(response => {
+          sessionStorage.setItem("userToken", response.data.token);
+          //store the frequently used user data
+          sessionStorage.setItem("username", response.data.user.name);
+          sessionStorage.setItem("email", response.data.user.email);
+          sessionStorage.setItem("userID", response.data.user._id);
+          sessionStorage.setItem("type", response.data.user.type);
+          sessionStorage.setItem(
+            "imageUrl",
+            response.data.user.imageFacebookUrl
+          );
+          sessionStorage.setItem("authType", "facebook");
+          if (response.data.user.registraionToken == undefined) {
+            localStorage.setItem("allowNotifications", false);
+            this.$store.commit(
+              "notification/setPushNotificationsPermission",
+              false
+            );
+          } else {
+            localStorage.setItem("allowNotifications", true);
+            this.$store.commit(
+              "notification/setPushNotificationsPermission",
+              true
+            );
+          }
+          this.$router.push(this.$route.query.redirect || "/webhome/home");
+        })
+        .catch(err => {
+          this.loading = false;
+          this.fbErrorState = true;
+          this.fbErrorMessage = "Please try again later";
+          console.log(err);
+        });
     }
   }
 };
@@ -362,4 +505,7 @@ export default {
   margin: auto;
 }
 
+a {
+  text-decoration: none;
+}
 </style>

@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const catchAsync = require('./../utils/catchAsync').threeArg;
 const AppError = require('./../utils/appError');
-const { Track } = require('./../models/trackModel');
+const Track = require('./../models/trackModel');
 const { User } = require('./../models/userModel');
 const PlayList = require('./../models/playlistModel');
 const Album = require('./../models/albumModel');
@@ -10,6 +10,14 @@ const { History } = require('./../models/historyModel');
 const APIFeatures = require('./../utils/apiFeatures');
 const _ = require('lodash');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const crypto = require('crypto');
+const { Notification } = require('../models/notificationsModel');
+const helper = require('../utils/helper');
+const util = require('util');
+const sizeOf = require('image-size');
+const fs_writeFile = util.promisify(fs.writeFile);
+const sharp = require('sharp');
+const Email = require('../utils/email');
 
 const mimeNames = {
   '.mp3': 'audio/mpeg',
@@ -21,6 +29,13 @@ const mimeNames = {
   '.webm': 'video/webm'
 };
 
+/**
+ * get user profile
+ * @function getProfileInfo
+ * @param {number} userId - the user id that you want to get his profile
+ * @return {Document} - the user profile info without any sensitive information
+ */
+
 async function getProfileInfo (userId) {
   return await User.findById(userId)
     .select('-password')
@@ -28,16 +43,36 @@ async function getProfileInfo (userId) {
     .select('-passwordChangedAt')
     .select('-passwordResetToken')
     .select('-active')
-    .select('-googleId');
+    .select('-queue')
+    .select('-googleId')
+    .select('-facebookId');
 }
+
+/**
+ * get the top tarcks or top artists
+ * @function getTopArtistsAndTracks
+ * @param {Object} Model - the model of the object that you want to get the top documents in it
+ * @param {Object} query - the query string object of express framework
+ * @return {Documents} - the top  artists or tracks
+ */
 
 async function getTopArtistsAndTracks (Model, query) {
   const top = new APIFeatures(Model.find().sort({ usersCount: -1 }), query)
-    .filter()
-    .limitFields()
-    .paginate();
+    .offset()
+    .limitFields();
   return await top.query;
 }
+
+/**
+ * open the file and send it to user
+ * @function sendResponse
+ * @param {Object} response - the response object of express framework
+ * @param {number} statusCode - the status code of the response
+ * @param {Object} responseHeaders - the header of the response
+ * @param {File} readable - the File you want to send to the user
+ * @return {File_Packets} - open the file and send it to the user
+ */
+
 function sendResponse (response, responseStatus, responseHeaders, readable) {
   response.writeHead(responseStatus, responseHeaders);
 
@@ -51,6 +86,13 @@ function sendResponse (response, responseStatus, responseHeaders, readable) {
   return null;
 }
 
+/**
+ * get the track extension
+ * @function getMimeNameFromExt
+ * @param {String} ext - track extenstion
+ * @return {String} - the header extension name
+ */
+
 function getMimeNameFromExt (ext) {
   let result = mimeNames[ext.toLowerCase()];
   if (!result) {
@@ -58,6 +100,13 @@ function getMimeNameFromExt (ext) {
   }
   return result;
 }
+/**
+ * get the packet start and end bytes
+ * @function readRangeHeader
+ * @param {Array} range - track range of packets
+ * @param {number} totalLength - the total length of the track
+ * @return {Object} - object containing the start and the end of the packet
+ */
 
 function readRangeHeader (range, totalLength) {
   if (!range || range.length === 0) {
@@ -84,8 +133,18 @@ function readRangeHeader (range, totalLength) {
 
   return result;
 }
-exports.playTrack = catchAsync(async (req, res) => {
+/* istanbul ignore next */
+
+exports.playInfo = catchAsync(async (req, res, next) => {
+  const currentUser = await User.findById(req.user._id).select('+history');
+  const playerToken = currentUser.createPlayerToken();
   const track = await Track.findById(req.params.track_id);
+  if (!track) {
+    return next(new AppError('track not found', 404));
+  }
+  if (track.premium && !req.user.premium) {
+    return next(new AppError('this track is for premium users only', 400));
+  }
   if (
     req.body.context_url === undefined &&
     req.body.context_type === undefined
@@ -94,7 +153,6 @@ exports.playTrack = catchAsync(async (req, res) => {
       track: track._id,
       played_at: Date.now()
     };
-    const currentUser = await User.findById(req.user._id).select('+history');
     currentUser.queue.currentlyPlaying.currentTrack = `${
       req.protocol
     }://${req.get('host')}/api/v1/me/player/tracks/${track._id}`;
@@ -119,36 +177,65 @@ exports.playTrack = catchAsync(async (req, res) => {
     });
     updatedUser.queue.currentlyPlaying.device = deviceId;
     await updatedUser.save({ validateBeforeSave: false });
-    if (
-      updatedUser.queue.seek !== undefined ||
-      updatedUser.queue.seek !== null
-    ) {
-      req.headers.range = updatedUser.queue.seek;
-    }
   } else {
+    let context = {};
+    if (req.body.context_type === 'liked') {
+      context.contextImage = `${req.protocol}://${req.get(
+        'host'
+      )}/api/v1/images/playlists/liked.png`;
+      context.contextName = `Liked Songs`;
+      context.tracks = req.user.followedTracks;
+    } else if (req.body.context_type === 'album') {
+      context = await Album.findById(req.body.contextId);
+      context.contextImage = context.image;
+      context.contextName = context.name;
+      context.contextId = context._id;
+    } else if (req.body.context_type === 'playlist') {
+      context = await PlayList.findById(req.body.contextId);
+      context.contextImage = context.images[0];
+      context.contextName = context.name;
+      context.contextId = context._id;
+      context.contextDescription = context.description;
+    } else {
+      context = await User.findById(req.body.contextId);
+      context.contextImage = context.imageUrl;
+      context.contextName = context.name;
+      context.contextId = context._id;
+    }
     const item = {
       track: track._id,
       played_at: Date.now(),
+      ..._.pick(context, [
+        'contextImage',
+        'contextName',
+        'contextId',
+        'contextDescription'
+      ]),
       contextUrl: req.body.context_url,
       contextType: req.body.context_type
     };
-    let context;
-    if (req.body.context_type === 'album') {
-      context = await Album.findById(req.body.contextId);
-    } else if (req.body.context_type === 'playlist') {
-      context = await PlayList.findById(req.body.contextId);
-    } else {
-      context = await User.findById(req.body.contextId);
-    }
     const TracksUrl = [];
-    context.tracks.forEach(tracks => {
+
+    context.tracks = req.user.premium
+      ? await Track.find({
+          _id: { $in: context.tracks }
+        }).distinct('_id')
+      : await Track.find({
+          _id: { $in: context.tracks },
+          premium: false
+        }).distinct('_id');
+    let indexOfCurrentTrack = -1;
+    for (let i = 0; i < context.tracks.length; i++) {
+      if (context.tracks[i].equals(track._id)) indexOfCurrentTrack = i;
       TracksUrl.push(
         `${req.protocol}://${req.get('host')}/api/v1/me/player/tracks/${
-          tracks._id
+          context.tracks[i]
         }`
       );
-    });
-    const indexOfCurrentTrack = context.tracks.indexOf(track._id);
+    }
+    if (indexOfCurrentTrack == -1) {
+      return next(new AppError('this track does not exist', 404));
+    }
     const indexOfPreviousTrack =
       indexOfCurrentTrack === 0 ? -1 : indexOfCurrentTrack - 1;
     const indexOfNextTrack =
@@ -165,9 +252,10 @@ exports.playTrack = catchAsync(async (req, res) => {
       previousTrack:
         indexOfPreviousTrack !== -1 ? TracksUrl[indexOfPreviousTrack] : null,
       nextTrack: indexOfNextTrack !== -1 ? TracksUrl[indexOfNextTrack] : null,
-      devices: [{ devicesName: req.body.device }]
+      devices: [{ devicesName: req.body.device }],
+      contextId: context.contextId,
+      contextType: req.body.context_type
     };
-    const currentUser = await User.findById(req.user._id).select('+history');
     if (currentUser.history === undefined) {
       const history = await History.create({
         items: [item]
@@ -189,21 +277,34 @@ exports.playTrack = catchAsync(async (req, res) => {
     });
     updatedUser.queue.currentlyPlaying.device = deviceId;
     await updatedUser.save({ validateBeforeSave: false });
-    if (
-      updatedUser.queue.seek !== undefined ||
-      updatedUser.queue.seek !== null
-    ) {
-      req.headers.range = updatedUser.queue.seek;
-    }
   }
+  res.status(200).json({
+    data: playerToken
+  });
+});
+exports.playTrack = catchAsync(async (req, res, next) => {
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
+  const user = await User.findOne({
+    playerToken: hashedToken,
+    playerTokenExpires: {
+      $gt: Date.now()
+    }
+  });
+  if (!user) {
+    return next(new AppError('Token is invalid or has expired', 400));
+  }
+  const track = await Track.findById(req.params.track_id);
+  track.usersCount++;
+  await track.save({ validateBeforeSave: false });
   const { trackPath } = track;
   // Check if file exists. If not, will return the 404 'Not Found'.
   if (!fs.existsSync(`${trackPath}`)) {
-    __logger.error(`track at ${trackPath} doesn't exist`);
     sendResponse(res, 404, null, null);
     return null;
   }
-  __logger.error(`track at ${trackPath} exists`);
   const responseHeaders = {};
   const stat = fs.statSync(trackPath);
   const rangeRequest = readRangeHeader(req.headers.range, stat.size);
@@ -248,33 +349,47 @@ exports.playTrack = catchAsync(async (req, res) => {
   );
 });
 exports.userProfile = catchAsync(async (req, res, next) => {
-  const currentUser = await exports.getProfileInfo(req.params.user_id);
+  const currentUser = await exports.getProfileInfo(req.params.id);
   if (!currentUser) {
     return next(new AppError('No user found', 404));
   }
   res.status(200).json(currentUser);
 });
 exports.updateCurrentUserProfile = catchAsync(async (req, res, next) => {
+  if (req.body.image) {
+    const url = `${req.protocol}://${req.get('host')}`;
+    const image = req.body.image.replace(/^data:image\/[a-z]+;base64,/, '');
+    imageName = await exports.prepareAndSaveImage(
+      Buffer.from(image, 'base64'),
+      req.user
+    );
+    req.body.imageUrl = `${url}/api/v1/images/users/${imageName}`;
+  }
   const user = await User.findByIdAndUpdate(
     req.user._id,
     {
-      ..._.pick(req.body, ['email', 'dateOfBirth', 'gender', 'phone'])
+      ..._.pick(req.body, [
+        'email',
+        'dateOfBirth',
+        'gender',
+        'phone',
+        'name',
+        'imageUrl'
+      ])
     },
     { new: true, runValidators: true }
   );
   res.status(200).json(user);
 });
-
 exports.currentUserProfile = catchAsync(async (req, res, next) => {
   const currentUser = await exports.getProfileInfo(req.user._id);
   res.status(200).json(currentUser);
 });
-//wait
 exports.topTracksAndArtists = catchAsync(async (req, res, next) => {
   const doc =
     req.params.type === 'track'
-      ? await getTopArtistsAndTracks(Track, req.query)
-      : await getTopArtistsAndTracks(User, req.query);
+      ? await exports.getTopArtistsAndTracks(Track, req.query)
+      : await exports.getTopArtistsAndTracks(User, req.query);
   res.status(200).json({
     doc
   });
@@ -282,8 +397,17 @@ exports.topTracksAndArtists = catchAsync(async (req, res, next) => {
 exports.recentlyPlayed = catchAsync(async (req, res, next) => {
   const currentUser = await User.findById(req.user._id).select('+history');
   const history = await History.findById(currentUser.history).select('-__v');
+  if (!history || !history.items) {
+    return res.status(200).json({
+      history: []
+    });
+  }
+  history.items = _.reverse(history.items);
+  history.items = _.uniqBy(history.items, 'contextName');
+  history.items = _.remove(history.items, i => i.contextId != undefined);
+  const results = history.items.slice(0, Math.min(history.items.length, 6));
   res.status(200).json({
-    history
+    history: results
   });
 });
 
@@ -424,6 +548,13 @@ exports.next = catchAsync(async (req, res, next) => {
 exports.pushQueue = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.user._id);
   const currentUserQueue = user.queue;
+  if (!user.queue.nextTrack) {
+    user.queue.nextTrack = req.body.track;
+  }
+  if (!user.queue.currentlyPlaying.currentTrack) {
+    user.queue.currentlyPlaying.currentTrack = req.body.track;
+  }
+
   currentUserQueue.queueTracks.push(req.body.track);
   await user.save({ validateBeforeSave: false });
   res.status(200).json({
@@ -440,6 +571,16 @@ exports.popQueue = catchAsync(async (req, res, next) => {
     return next(new AppError('This Track is not in your current queue', 404));
   }
   currentUserQueue.queueTracks.splice(indexOfPreviousTrack, 1);
+  if (
+    currentUserQueue.currentlyPlaying.currentTrack == req.body.removedTrack &&
+    currentUserQueue.queueTracks.length - 1 !== indexOfPreviousTrack
+  ) {
+    currentUserQueue.currentlyPlaying.currentTrack = currentUserQueue.nextTrack;
+    currentUserQueue.nextTrack =
+      currentUserQueue.queueTracks[indexOfPreviousTrack + 1];
+  } else if (currentUserQueue.queueTracks.length - 1 !== indexOfPreviousTrack) {
+    currentUserQueue.currentlyPlaying.currentTrack = currentUserQueue.nextTrack;
+  }
   await user.save({ validateBeforeSave: false });
   res.status(204).json({
     data: null
@@ -448,6 +589,9 @@ exports.popQueue = catchAsync(async (req, res, next) => {
 exports.getDevices = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.user._id);
   const currentUserQueue = user.queue;
+  if (!currentUserQueue.devices) {
+    return next(new AppError('this user has no devices at this time.', 404));
+  }
   res.status(200).json({
     data: currentUserQueue.devices
   });
@@ -482,6 +626,11 @@ exports.pushDevices = catchAsync(async (req, res, next) => {
 exports.getCurrentlyPlaying = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.user._id);
   const currentPlaying = user.queue.currentlyPlaying;
+  if (!currentPlaying) {
+    return next(
+      new AppError('this user is not playing any track right now', 404)
+    );
+  }
   res.status(200).json({
     data: currentPlaying
   });
@@ -489,6 +638,9 @@ exports.getCurrentlyPlaying = catchAsync(async (req, res, next) => {
 exports.getQueue = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.user._id);
   const currentQueue = user.queue;
+  if (!currentQueue) {
+    return next(new AppError('there is no queue for this user right now', 404));
+  }
   res.status(200).json({
     data: currentQueue
   });
@@ -496,16 +648,18 @@ exports.getQueue = catchAsync(async (req, res, next) => {
 exports.getCheckoutSession = catchAsync(async (req, res, next) => {
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
-    success_url: `${req.protocol}://${req.get('host')}/api/v1/me`,
-    cancel_url: `${req.protocol}://${req.get('host')}/`,
+    success_url: `${req.protocol}://${req.get('host')}/webhome/home`,
+    cancel_url: `${req.protocol}://${req.get('host')}/premium`,
     customer_email: req.user.email,
     client_reference_id: req.user.email,
     line_items: [
       {
         name: `Premium Subscription`,
         description: `remove advs and get locked songs`,
-        images: [`${req.protocol}://${req.get('host')}/img/defult`],
-        amount: 100 * 100,
+        images: [
+          `${req.protocol}://${req.get('host')}/api/v1/images/icons/icon.png`
+        ],
+        amount: 50 * 100,
         currency: 'USD',
         quantity: 1
       }
@@ -515,17 +669,26 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
     session
   });
 });
+
+/**
+ * function make the user premium for sript
+ * @param {Object} session - user checkout session
+ * @returns {void}
+ */
 const createPremiumSubscriptionCheckout = async session => {
   const user = await User.findOne({ email: session.customer_email });
-  user.type = 'premium-user';
-  user.save({ validateBeforeSave: false });
+  user.premium = true;
+  user.premiumExpires = Date.now() + 60 * 60 * 6000 * 24 * 30;
+  await user.save({ validateBeforeSave: false });
 };
+
+/* istanbul ignore next */
 exports.webhookCheckout = catchAsync(async (req, res, next) => {
   const signature = req.headers['stripe-signature'];
   let event;
   try {
     event = stripe.webhooks.constructEvent(
-      req.body,
+      req.rawBody,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET
     );
@@ -536,7 +699,110 @@ exports.webhookCheckout = catchAsync(async (req, res, next) => {
     createPremiumSubscriptionCheckout(event.data.object);
   res.status(200).json({ received: true });
 });
+exports.setRegistrationToken = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  user.registraionToken = req.body.token;
+  await user.save({ validateBeforeSave: false });
+  res.status(200).json({ user });
+});
+exports.getNotificationsHistory = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user._id).select('+notification');
+  if (user.notification === undefined) {
+    return next(
+      new AppError(`this user doesn't have notifications history`, 404)
+    );
+  }
+  const notifications = await Notification.findById(user.notification);
+  res.status(200).json({ notifications });
+});
+exports.applyPremium = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  const Token = user.createPremiumToken();
+  await user.save({
+    validateBeforeSave: false
+  });
+  // 3) Send it to user's email
+  try {
+    const premiumURL =
+      `${req.protocol}://${req.hostname}` + `/apply-premium/${Token}`;
+
+    await new Email(user, premiumURL).sendPremiumToken();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Token sent to email!'
+    });
+  } catch (err) {
+    user.premiumToken = undefined;
+    user.premiumExpires = undefined;
+    await user.save({
+      validateBeforeSave: false
+    });
+    return next(
+      new AppError(
+        'There was an error sending the email. Try again later!',
+        500
+      )
+    );
+  }
+});
+exports.premium = catchAsync(async (req, res, next) => {
+  // 1) Get user based on the token
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
+  const user = await User.findOne({
+    premiumToken: hashedToken,
+    premiumExpires: {
+      $gt: Date.now()
+    }
+  });
+  if (!user) {
+    return next(new AppError('Token is invalid or has expired', 400));
+  }
+  user.premiumToken = undefined;
+  user.premiumExpires = undefined;
+  user.premium = true;
+  user.premiumExpires = Date.now() + 60 * 60 * 6000 * 24 * 30;
+  await user.save({ validateBeforeSave: false });
+  // 3) Update changedPasswordAt property for the user
+  res.status(201).json({ message: 'User is now premium!' });
+});
+
+/* istanbul ignore next */
+
+/**
+ * function to prepare the buffer image and manipulate it be resizing to be a sqaure jpeg image and save it
+ * @param {Buffer} bufferImage - Buffer contains image data
+ * @param {Object} user - user object that contains user's name and id
+ * @returns {String} The name of the stored image
+ */
+exports.prepareAndSaveImage = async function prepareAndSaveImage (
+  bufferImage,
+  user
+) {
+  // A1) get image data like the width and height and extension
+  const imageData = sizeOf(bufferImage);
+  const imageSize = Math.min(imageData.width, imageData.height, 300);
+  // A2) manipulate the image to be square
+  const decodedData = await sharp(bufferImage)
+    .resize(imageSize, imageSize, { kernel: 'cubic' })
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })
+    .toBuffer();
+  const imageType = sizeOf(decodedData).type;
+
+  // B) save the image with unique name to the following path
+  const imageName = `${helper.randomStr(20)}-${Date.now()}.${imageType}`;
+  const imagePath = path.resolve(`${__dirname}/../assets/images/users/`);
+  await fs_writeFile(`${imagePath}/${imageName}`, decodedData);
+
+  return imageName;
+};
+
 module.exports.sendResponse = sendResponse;
 module.exports.getMimeNameFromExt = getMimeNameFromExt;
 module.exports.readRangeHeader = readRangeHeader;
 module.exports.getProfileInfo = getProfileInfo;
+module.exports.getTopArtistsAndTracks = getTopArtistsAndTracks;

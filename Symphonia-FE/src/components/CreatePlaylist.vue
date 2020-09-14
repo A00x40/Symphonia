@@ -1,21 +1,5 @@
-<template slot="activator">
-  <v-dialog fullscreen v-model="dialog">
-    <!--Slot to activate the popup it will be shown in the drawer-->
-    <template v-slot:activator="{ on }">
-      <v-list-item class="temp" v-on:keyup.esc="close" v-on="on" inactive>
-        <v-btn
-          fab
-          x-small
-          color="white"
-          id="openPopup"
-          style="border-radius: 0px; margin-right: 7%"
-        >
-          <v-icon color="black">mdi-plus</v-icon>
-        </v-btn>
-        <v-list-item-title v-show="$vuetify.breakpoint.lgAndUp">Create Playlist</v-list-item-title>
-      </v-list-item>
-    </template>
-
+<template>
+  <v-dialog fullscreen v-model="dialog" @keydown.esc="close">
     <v-card
       align="center"
       color="rgb(0,0,0,0.9)"
@@ -34,8 +18,8 @@
       </v-btn>
 
       <h1 class="font-weight-bold display-2 mb-9">Create new playlist</h1>
-      <!--take the playlist name from here-->
 
+      <!--take the playlist name from here-->
       <p class="playlist">Playlist Name</p>
       <input
         class="input"
@@ -48,31 +32,32 @@
       />
 
       <!--The actions of the popup cancel-create-->
-      <v-btn
-        color="white"
-        outlined
-        rounded
-        @click="close"
-        class="popbutton px-8 mx-8"
-        id="cancel"
-        >Cancel
-      </v-btn>
-      <v-btn
-        class="white--text popbutton px-8"
-        rounded
-        @click="create"
-        id="create"
-        >Create
-      </v-btn>
+      <div id="createPlaylistActions">
+        <v-btn
+          color="white"
+          outlined
+          rounded
+          @click="close"
+          class="popbutton px-8 mx-8"
+          id="cancel"
+          >Cancel
+        </v-btn>
+        <v-btn
+          class="white--text popbutton px-8"
+          rounded
+          @click="create"
+          id="create"
+          >Create
+        </v-btn>
+      </div>
     </v-card>
   </v-dialog>
 </template>
 
 <script>
 import getDeviceSize from "../mixins/getDeviceSize";
-import getuserToken from "../mixins/userService";
-import getuserID from "../mixins/userService";
-
+import getuserToken from "../mixins/userService/getUserToken";
+import getuserID from "../mixins/userService/getuserID";
 
 /**
  * @displayName Create Playlist
@@ -85,7 +70,9 @@ export default {
       name: ""
     };
   },
-
+  created() {
+    this.dialog = this.$store.state.playlist.createPlaylist;
+  },
   methods: {
     /**
      * Gets called when the user clicks on the create button or press enter
@@ -95,9 +82,14 @@ export default {
     create: function() {
       //if the input was empty the playlist name will be "New Playlist" (it allows duplicats)
       if (this.name == "") this.name = "New Playlist";
-      this.$store.dispatch("playlist/createPlaylist",{name: this.name , token: this.getuserToken() ,id: this.getuserID()});
+      this.$store.dispatch("playlist/createPlaylist", {
+        name: this.name,
+        token: this.getuserToken(),
+        id: this.getuserID()
+      });
       //Reset the input data and close the popup
       this.name = "";
+      this.$store.commit("playlist/changeCreateModel");
       this.dialog = false;
     },
     /**
@@ -107,10 +99,11 @@ export default {
      */
     close: function() {
       this.name = "";
+      this.$store.commit("playlist/changeCreateModel");
       this.dialog = false;
     }
   },
-  mixins: [getDeviceSize , getuserToken ,getuserID]
+  mixins: [getDeviceSize, getuserToken, getuserID]
 };
 </script>
 
@@ -132,9 +125,6 @@ export default {
 
 #create:hover {
   background-color: #1ed760;
-}
-.v-text-field {
-  font-size: 32px;
 }
 
 #closeIcon {
@@ -171,15 +161,5 @@ export default {
   padding-top: 20px;
   text-align: start;
   padding-left: 50px;
-}
-
-.temp {
-  opacity: 0.6;
-}
-
-.temp:hover {
-  opacity: 1;
-  cursor: pointer;
-  background-color: transparent;
 }
 </style>

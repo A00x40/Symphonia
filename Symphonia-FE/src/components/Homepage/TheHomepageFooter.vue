@@ -15,22 +15,14 @@
         style="position: relative;"
       >
         <router-link v-if="isLg() || isMd()" to="/" class="links-column-1">
-          <v-img
-            src="/s11.png"
-            max-width="50px"
-            style="float: left;"
-          ></v-img>
+          <v-img src="/s11.png" max-width="50px" style="float: left;"></v-img>
           <h2 style="display: inline;" display-4 class="white--text">
             Symphonia
           </h2>
         </router-link>
 
         <router-link class="links-column-1" to="/" v-if="isSm() || isXs()">
-          <v-img
-            src="/s11.png"
-            max-width="50px"
-            style="float: left;"
-          ></v-img>
+          <v-img src="/s11.png" max-width="50px" style="float: left;"></v-img>
           <h2 style="display: inline;" display-4 class="white--text">
             Symphonia
           </h2>
@@ -48,9 +40,11 @@
             <li class="links-column-title">
               company
             </li>
-            <li class="links-column-item">
-              About
-            </li>
+            <router-link to="/about">
+              <li class="links-column-item">
+                About
+              </li>
+            </router-link>
           </ul>
         </v-container>
 
@@ -84,17 +78,21 @@
             <li class="links-column-title">
               useful links
             </li>
-            <li class="links-column-item">
-              Help
-            </li>
+            <router-link to="/help">
+              <li class="links-column-item">
+                Help
+              </li>
+            </router-link>
             <router-link to="/webhome/home">
               <li class="links-column-item">
                 Web Player
               </li>
             </router-link>
-            <li class="links-column-item">
-              For Mobile App
-            </li>
+            <router-link to="/download">
+              <li class="links-column-item">
+                For Mobile App
+              </li>
+            </router-link>
           </ul>
         </v-container>
 
@@ -102,13 +100,13 @@
           class="links-column-3"
           v-bind:class="{ 'links-column-3-small': isSm() || isXs() }"
         >
-          <router-link class="socialmedia-icon" to="/instagram">
+          <router-link class="socialmedia-icon" to="/">
             <v-icon medium class="socialmedia-icon-color">mdi-instagram</v-icon>
           </router-link>
-          <router-link class="socialmedia-icon" to="/twitter">
+          <router-link class="socialmedia-icon" to="/">
             <v-icon medium class="socialmedia-icon-color">mdi-twitter</v-icon>
           </router-link>
-          <router-link class="socialmedia-icon" to="/facebook">
+          <router-link class="socialmedia-icon" to="/">
             <v-icon medium class="socialmedia-icon-color">mdi-facebook</v-icon>
           </router-link>
         </v-container>
@@ -118,7 +116,7 @@
 </template>
 
 <script>
-import getDeviceSize from "../../mixins/getDeviceSize"
+import getDeviceSize from "../../mixins/getDeviceSize";
 
 /**
  * The homepage footer.

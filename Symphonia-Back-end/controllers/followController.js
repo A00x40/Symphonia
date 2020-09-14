@@ -3,23 +3,38 @@ const { User } = require('../models/userModel');
 const Playlist = require('../models/playlistModel');
 const AppError = require('../utils/appError');
 const APIFeatures = require('./../utils/apiFeatures');
+const mongoose = require('mongoose');
+const Responser = require('../utils/responser');
+const { notify } = require('../startup/notification');
 
 exports.FollowUser = catchAsync(async (req, res, next) => {
   if (!req.query.ids) {
     return next(new AppError('ids field is missing', 400)); // bad request
   }
   const ids = req.query.ids.split(',');
+  // NOTE: not tested
+  for (let i = 0; i < ids.length; i++) {
+    if (!mongoose.Types.ObjectId.isValid(ids[i])) {
+      return next(new AppError('invalid ids provided', 400));
+    }
+    const user = await User.findById(ids[i]);
+    if (!user) return next(new AppError('this is not a valid user', 400));
 
-  let currUser = req.user;
-  for (let index = 0; index < ids.length; index++) {
-    const element = ids[index];
-    await User.findByIdAndUpdate(currUser._id, {
-      $push: {
-        followdUsers: element
-      }
-    });
+    if (req.user.followedUsers.includes(ids[i])) {
+      return next(new AppError('user is already followed', 400));
+    }
   }
+  req.user.usersCount += ids.length;
+  req.user.followedUsers.push(...ids);
+  await req.user.save({ validateBeforeSave: false });
   res.status(204).json();
+  await notify(
+    ids,
+    req.user._id,
+    'Following User',
+    `${req.user.name} started following you`,
+    req.user.imageUrl
+  );
 });
 
 exports.checkIfUserFollower = catchAsync(async (req, res, next) => {
@@ -31,7 +46,6 @@ exports.checkIfUserFollower = catchAsync(async (req, res, next) => {
   // find if userIds includes one of them
   user = req.user;
   let isFollowingArr = [];
-  console.log(user.followedUsers);
   userIds.map((value, index, arr) => {
     if (user.followedUsers.includes(value)) {
       isFollowingArr.push(true);
@@ -46,6 +60,7 @@ exports.checkIfPlaylistFollower = catchAsync(async (req, res, next) => {
   if (!req.query.ids) {
     return next(new AppError('ids field is missing', 400)); // bad request
   }
+
   let userIds = req.query.ids.split(',');
   let playlistId = req.params.id;
   // we have to make
@@ -72,7 +87,7 @@ exports.followPlaylist = catchAsync(async (req, res, next) => {
 
   let oldPlaylist = await Playlist.findOne({ _id: playlistId });
   if (oldPlaylist.followers.includes(userId)) {
-    return next(new AppError('already following the playlist'), 403);
+    return next(new AppError('already following the playlist', 403));
   }
   newPlayist = await Playlist.findByIdAndUpdate(
     playlistId,
@@ -83,27 +98,55 @@ exports.followPlaylist = catchAsync(async (req, res, next) => {
     },
     { new: true }
   );
+  const ids = [];
+  ids.push(oldPlaylist.owner);
   res.status(200).json();
+  await notify(
+    ids,
+    req.user._id,
+    'Like Playlist',
+    `${req.user.name} liked your playlist ${oldPlaylist.name}`,
+    req.user.imageUrl
+  );
 });
 
-// TODO: handle the next href and the
-// TODO: the query must have the type parameter specified and type = artist (i didn't include it)
+exports.followedPlaylistCount = catchAsync(async (req, res, next) => {
+  const count = await Playlist.count({
+    followers: { $elemMatch: { $eq: req.user._id } }
+  });
+  res.status(200).json({ FollowedPlaylists: count });
+});
+
+exports.followedPlaylist = catchAsync(async (req, res, next) => {
+  const features = new APIFeatures(
+    Playlist.find({
+      followers: { $elemMatch: { $eq: req.user._id } }
+    }),
+    req.query
+  )
+    .filter()
+    .offset();
+
+  const playlists = await features.query.populate('owner', 'name');
+  const limit = req.query.limit * 1 || 20;
+  const offset = req.query.offset * 1 || 0;
+  res
+    .status(200)
+    .json(Responser.getPaging(playlists, 'playlists', req, limit, offset));
+});
+
+// for the a next better version of this api we need to do the following
+// 1: handle the next href and the
+// 2: remove it entirely and replace with one that has no after functionality
+// 3: the query must have the type parameter specified and type = artist (i didn't include it)
+// replace the this function with the second version of it
 exports.getUserFollowedArtists = catchAsync(async (req, res, next) => {
   // filteration stage
   let limit = 20;
   if (req.query.limit) {
-    limit = parseInt(req.query.limit);
+    limit = parseInt(req.query.limit) || 20;
   }
-  // TODO suppport pagination with limit
-  /*
-  let user = await User.findOne({ _id: req.user._id }).populate({
-    path: 'followedUsers',
-    match: { type: 'artist' },
-    options: {
-      limit: limit
-    }
-  });
-*/
+
   let user = await User.findOne({ _id: req.user._id }).populate({
     path: 'followedUsers',
     match: { type: 'artist' }
@@ -118,7 +161,6 @@ exports.getUserFollowedArtists = catchAsync(async (req, res, next) => {
     id_after = req.query.after;
     for (let index = 0; index < followedUsers.length; index++) {
       const element = followedUsers[index];
-      console.log(element._id);
       if (element._id == id_after) {
         afterIndex = index;
         break;
@@ -126,8 +168,6 @@ exports.getUserFollowedArtists = catchAsync(async (req, res, next) => {
     }
   }
 
-  console.log('____________element___________');
-  console.log(typeof limit);
   // get the after after id
   let afterId = null;
   let myNext = null;
@@ -153,7 +193,8 @@ exports.getUserFollowedArtists = catchAsync(async (req, res, next) => {
     next: myNext,
     cursors: {
       after: afterId
-    }
+    },
+    totalFollowed: originalTotal
   });
 });
 // removes the users with ids from current user

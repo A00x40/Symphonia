@@ -12,16 +12,24 @@
           <v-col sm="1" v-if="isSm()"></v-col>
           <v-col sm="10" md="12" lg="12" xs="12">
             <h1
+              v-if="!isPremium()"
               class="premium-header"
               v-bind:class="{ 'premium-header-xs': isXs() }"
             >
               Get Premium free for 1 month
             </h1>
+            <h1
+              v-if="isPremium()"
+              class="premium-header"
+              v-bind:class="{ 'premium-header-xs': isXs() }"
+            >
+              You are already premium !
+            </h1>
           </v-col>
           <v-col sm="1" v-if="isSm()"></v-col>
         </v-row>
 
-        <v-row>
+        <v-row v-if="!isPremium()">
           <v-col sm="1" v-if="isSm()"></v-col>
           <v-col sm="10" md="12" lg="12" xs="12">
             <p class="price" v-bind:class="{ 'price-xs': isXs() }">
@@ -31,16 +39,16 @@
           <v-col sm="1" v-if="isSm()"></v-col>
         </v-row>
 
-        <v-row>
+        <v-row v-if="!isPremium()">
           <v-col sm="1" v-if="isSm()"></v-col>
           <v-col sm="10" md="12" lg="12" xs="12">
-            <router-link
-              to="/trial"
+            <a
+              v-on:click="premium"
               class="download-button-large"
               v-bind:class="{ 'download-button-xs': isXs() }"
             >
               get premium
-            </router-link>
+            </a>
           </v-col>
           <v-col sm="1" v-if="isSm()"></v-col>
         </v-row>
@@ -48,7 +56,7 @@
     </v-content>
 
     <!-- Benefits -->
-    <v-content>
+    <v-content v-if="!isPremium()">
       <v-row>
         <v-col>
           <h1 class="why-premium">Why go Premium?</h1>
@@ -60,9 +68,7 @@
           <v-card class="mx-auto" max-width="400" flat>
             <v-img
               aspect-ratio="1"
-              v-bind:src="
-                '/benefits/benefit-' + n.no + '.png'
-              "
+              v-bind:src="'/benefits/benefit-' + n.no + '.png'"
               style="
               display: block;
               margin-left: auto;
@@ -95,7 +101,7 @@
       </v-row>
     </v-content>
 
-    <v-content>
+    <v-content v-if="!isPremium()">
       <v-card class="mx-auto my-12" max-width="374">
         <v-card-title style="font-size 32px; color: black;"
           >Symphonia Premium</v-card-title
@@ -118,20 +124,28 @@
 
           <v-divider class="mx-4"></v-divider>
 
-          <router-link
-            to="/trial"
+          <a
+            v-on:click="premium"
             class="download-button-large download-button-xs"
           >
             get premium
-          </router-link>
+          </a>
         </v-card-text>
       </v-card>
     </v-content>
   </div>
 </template>
 
+<script src="https://js.stripe.com/v3/"></script>
+
 <script>
-import getDeviceSize from "../../mixins/getDeviceSize"
+import getDeviceSize from "../../mixins/getDeviceSize";
+import getuserToken from "../../mixins/userService/getUserToken";
+import isPremium from "../../mixins/userService/isPremium";
+import { mapMutations, mapActions } from "vuex";
+
+import axios from "axios";
+import isLoggedIn from "../../mixins/userService/isLoggedIn";
 
 /**
  * The homepage content when pressing premium tab.
@@ -164,59 +178,64 @@ export default {
           text1: "Unlimited skips.",
           text2: "Just hit next."
         }
-      }
+      },
+      stripe: undefined,
+      userToken: undefined
     };
   },
 
   methods: {
-    /**
-     * Hide the navbar when this view is loaded
-     * by adding an event listener to the window.
-     * @public
-     */
-    hideNavBackground() {
-      this.NavFunction();
-      window.addEventListener("scroll", this.NavFunction);
-    },
-
+    ...mapMutations("homepage", ["setNavigationBarColor"]),
+    ...mapActions("homepage", ["openStripeForm"]),
     /**
      * Change the opacity of the Navbar after scrolling.
      * @public
      */
     NavFunction() {
-      var nav = document.getElementById("nav");
       if (window.pageYOffset > 50) {
-        nav.style.backgroundColor = "rgba(0, 0, 0, 0.6)";
+        this.setNavigationBarColor("rgba(0, 0, 0, 0.6)");
       } else {
-        nav.style.backgroundColor = "rgba(0, 0, 0, 0)";
+        this.setNavigationBarColor("rgba(0, 0, 0, 0)");
       }
     },
-
     /**
-     * After get out of this page, remove the scroll event listener from the window.
+     * get premium
      * @public
      */
-    removeNavEventListener() {
-      window.removeEventListener("scroll", this.NavFunction);
+    premium() {
+      if (!this.isLoggedIn()) {
+        this.$router.push(`/login`).catch(() => {});
+      } else {
+        this.stripe = Stripe("pk_test_RqCR6gpy5RMhclg6bDCNZriV00z3bugPaY");
+
+        this.openStripeForm({
+          token: this.userToken,
+          stripe: this.stripe
+        });
+      }
     }
   },
 
   mounted: function() {
-    this.hideNavBackground(); //hideNavBackground will execute at pageload
+    this.NavFunction();
+    window.addEventListener("scroll", this.NavFunction);
+
+    this.userToken = "Bearer " + this.getuserToken();
   },
 
   destroyed: function() {
-    this.removeNavEventListener();
+    window.removeEventListener("scroll", this.NavFunction);
+    this.setNavigationBarColor("rgba(0, 0, 0, 0.6)");
   },
 
-  mixins: [getDeviceSize]
+  mixins: [getDeviceSize, getuserToken, isPremium, isLoggedIn]
 };
 </script>
 
 <style scoped>
 .hero-home-bg-cover {
-  background: url(/premium_hero.png) right bottom / 450px
-    no-repeat rgb(80, 155, 245);
+  background: url(/premium_hero.png) right bottom / 450px no-repeat
+    rgb(80, 155, 245);
   min-height: 493px;
   background-position: right 3px top -27px;
   padding: 0px;
@@ -224,8 +243,8 @@ export default {
 }
 
 .hero-home-md-cover {
-  background: url(/premium_hero.png) right bottom / 450px
-    no-repeat rgb(80, 155, 245);
+  background: url(/premium_hero.png) right bottom / 450px no-repeat
+    rgb(80, 155, 245);
   min-height: 493px;
   background-position: right 3px top 40px;
   padding: 0px;

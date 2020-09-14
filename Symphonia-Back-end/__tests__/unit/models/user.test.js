@@ -28,7 +28,7 @@ describe('user.createPasswordResetToken', () => {
     const user = new User({});
     resetToken = user.createPasswordResetToken();
     expect(new Date(user.passwordResetExpires).getTime()).toBeLessThanOrEqual(
-      Date.now() + 10 * 60 * 1000
+      Date.now() + 60 * 60 * 1000
     );
     expect(user.passwordResetToken).toBeDefined();
   });
@@ -98,6 +98,22 @@ describe('signToken', () => {
     process.env.JWT_SECRET_KEY = 'testingkey';
     process.env.JWT_VALID_FOR = '30d';
     const token = user.signToken();
+    expect(token).toBeDefined();
+  });
+});
+
+describe('createPremiumToken', () => {
+  it('should return a valid token', async () => {
+    const user = new User({ _id: mongoose.Types.ObjectId() });
+    const token = user.createPremiumToken();
+    expect(token).toBeDefined();
+  });
+});
+
+describe('createPlayerToken', () => {
+  it('should return a valid token', async () => {
+    const user = new User({ _id: mongoose.Types.ObjectId() });
+    const token = user.createPlayerToken();
     expect(token).toBeDefined();
   });
 });

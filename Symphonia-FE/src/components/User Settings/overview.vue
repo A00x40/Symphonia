@@ -1,6 +1,7 @@
 <template>
-  <div class="col-sm-9">
-    <div class="content">
+  <v-col class="col-sm-9" style="margin-left: 0px;margin-right:0px">
+    <v-content cols="9" class="content" style="padding: 48px;">
+      <!-- account overview view content -->
       <h1>Account overview</h1>
       <article class="section">
         <h3>Profile</h3>
@@ -11,6 +12,18 @@
               <col class="info-col" />
             </colgroup>
             <tbody>
+              <!-- The Username section -->
+              <tr class="info-row">
+                <td class="info-cell">
+                  <label for="username"
+                    ><span class="info-content">Username</span></label
+                  >
+                </td>
+                <td class="info-cell">
+                  <p class="info-value" id="username">{{ user.username }}</p>
+                </td>
+              </tr>
+              <!-- The Email sction -->
               <tr class="info-row">
                 <td class="info-cell">
                   <label for="email"
@@ -18,9 +31,21 @@
                   >
                 </td>
                 <td class="info-cell">
-                  <p class="info-value">{{ user.email }}</p>
+                  <p class="info-value">{{ user.userEmail }}</p>
                 </td>
               </tr>
+              <!-- The Gender sction -->
+              <tr class="info-row">
+                <td class="info-cell">
+                  <label for="gender"
+                    ><span class="info-content">Gender</span></label
+                  >
+                </td>
+                <td class="info-cell">
+                  <p class="info-value">{{ user.userGender }}</p>
+                </td>
+              </tr>
+              <!-- The Date of birth scetion -->
               <tr class="info-row">
                 <td class="info-cell">
                   <label for="date"
@@ -28,9 +53,10 @@
                   >
                 </td>
                 <td class="info-cell">
-                  <p class="info-value">{{ user.date }}</p>
+                  <p class="info-value">{{ user.userDOB }}</p>
                 </td>
               </tr>
+              <!-- The User's country section -->
               <tr class="info-row">
                 <td class="info-cell">
                   <label for="country"
@@ -38,13 +64,14 @@
                   >
                 </td>
                 <td class="info-cell">
-                  <p class="info-value">{{ user.country }}</p>
+                  <p class="info-value">{{ user.userCountry }}</p>
                 </td>
               </tr>
             </tbody>
           </table>
         </section>
-        <a class="btn-class" href="#">Edit profile</a>
+        <!-- Button to change the user's data -->
+        <a class="btn-class" href="/account/edit">Edit profile</a>
       </article>
       <article class="section">
         <h3>Your plan</h3>
@@ -52,7 +79,16 @@
           <div class="card">
             <div class="card-header">
               <div class="card-title">
-                <span class="card-span-title">Symphonia Free</span>
+                <span
+                  class="card-span-title"
+                  v-if="this.$store.state.user.userType === 'normal'"
+                  >Symphonia Free</span
+                >
+                <span
+                  class="card-span-title"
+                  v-if="this.$store.state.user.userType === 'premium'"
+                  >Symphonia Premium</span
+                >
               </div>
             </div>
             <div class="card-body">
@@ -65,13 +101,25 @@
                   </div>
                 </div>
                 <div>
-                  <h3>Free</h3>
+                  <!-- The user's plan -->
+                  <h3 v-if="this.$store.state.user.userType === 'noraml'">
+                    Free
+                  </h3>
+                  <h3 v-if="this.$store.state.user.userType === 'premium'">
+                    Premium
+                  </h3>
                 </div>
               </div>
             </div>
           </div>
         </section>
-        <a class="btn-class" href="#">Join Premium</a>
+        <!-- If the user is free -->
+        <a
+          class="btn-class"
+          href="/premium/?checkout=false"
+          v-if="this.$store.state.user.userType == `normal`"
+          >Join Premium</a
+        >
       </article>
       <article class="section">
         <h3>Sign out everywhere</h3>
@@ -91,224 +139,44 @@
         </div>
         <a class="btn-class" href="#">Sign out everywhere</a>
       </article>
-      <bottomContent />
-    </div>
-  </div>
+      <bottom-content></bottom-content>
+    </v-content>
+  </v-col>
 </template>
 
 <script>
-import bottomContent from "./bottomContent.vue";
+import BottomContent from "./BottomContent.vue";
+
+/**
+ * This page is used to overview the user data
+ * @displayName User Overview
+ * @example [none]
+ */
 export default {
   data() {
     return {
-      user: {
-        email: "example@temp.com",
-        date: "19/12/98",
-        country: "EG"
-      }
+      /** The current user's data got from the created request */
+      user: {}
     };
   },
   components: {
-    bottomContent: bottomContent
+    /** The review section */
+    "bottom-content": BottomContent
+  },
+  created() {
+    /** Request to get the current user's data */
+    this.$store
+      .dispatch("userData")
+      .then(() => {
+        // If we got it set it into the data to display the user's info
+        this.user = this.$store.state.user;
+        this.user.userDOB = this.user.userDOB.slice(0, 10);
+      })
+      .catch();
   }
 };
 </script>
 
-<style scoped>
-@font-face {
-  font-family: Circular;
-  src: url("https://open.scdn.co/fonts/CircularSpUIv3T-Book.woff2")
-      format("woff2"),
-    url("https://open.scdn.co/fonts/CircularSpUIv3T-Book.woff") format("woff"),
-    url("https://open.scdn.co/fonts/CircularSpUIv3T-Book.ttf") format("ttf");
-  font-style: normal;
-  font-weight: 400;
-}
-* {
-  box-sizing: border-box;
-}
-body {
-  font-family: Circular, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 1.5;
-  color: #222326;
-  box-sizing: border-box;
-}
-.col-sm-9 {
-  width: 75%;
-  position: relative;
-  padding: 0 15px;
-  background-color: white;
-}
-.content {
-  padding: 48px;
-  background-color: white;
-  justify-content: space-between;
-  margin-left: -15px;
-  margin-right: -15px;
-}
-h1 {
-  font-size: 48px;
-  line-height: 56px;
-  font-weight: 900;
-  letter-spacing: -1px;
-  padding-bottom: 0.67em;
-  color: #181818;
-  margin: 0;
-}
-.section {
-  margin-bottom: 72px;
-}
-h3 {
-  font-size: 24px;
-  line-height: 32px;
-  font-weight: 900;
-  letter-spacing: -0.25px;
-  padding: 0;
-  color: #181818;
-  margin-bottom: 16px;
-}
-.child {
-  margin-bottom: 1.5em;
-  padding: 0;
-}
-.info-table {
-  width: 100%;
-  border-collapse: collapse;
-  border-spacing: 0;
-}
-.info-col {
-  width: 50%;
-}
-.info-row {
-  border-bottom: 1px solid #d9dadc;
-}
-.info-cell {
-  white-space: nowrap;
-}
-.info-content {
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 24px;
-  letter-spacing: 0px;
-  color: #9e9e9e;
-  margin: 1em 1em 1em 0;
-}
-.info-value {
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 24px;
-  letter-spacing: 0px;
-  color: #000;
-  margin: 1em 0;
-  padding: 0;
-}
-.btn-class {
-  letter-spacing: 1.5px;
-  font-size: 14px;
-  width: auto;
-  display: inline-block;
-  background-color: hsla(0, 0%, 100%, 0.3);
-  border: 2px solid #757575;
-  color: #757575;
-  border-radius: 100px;
-  min-height: 48px;
-  text-align: center;
-  text-transform: uppercase;
-  font-weight: 700;
-  line-height: 20px;
-  padding: 1em 3em;
-  transition-duration: 33ms;
-  transition-property: background-color, border-color, color, box-shadow, filter,
-    transform, -webkit-box-shadow, -webkit-filter, -webkit-transform;
-  user-select: none;
-  text-decoration: none;
-  cursor: pointer;
-}
-.card {
-  border-radius: 4px;
-  overflow: hidden;
-  border: 1px solid #d9dadc;
-}
-.card-header {
-  border-style: none;
-  border-width: medium;
-  border-image: none 100% / 1 / 0 stretch;
-  background: rgba(0, 0, 0, 0)
-    linear-gradient(-180deg, rgb(182, 43, 190) 0%, rgb(150, 34, 185) 100%)
-    repeat scroll 0% 0%;
-  height: 230px;
-  display: flex;
-  -webkit-box-align: center;
-  align-items: center;
-  border-top-color: currentcolor;
-  border-bottom-color: currentcolor;
-}
-.card-title {
-  color: white;
-  padding: 24px;
-  -webkit-box-flex: 1;
-  flex-grow: 1;
-}
-.card-span-title {
-  font-size: 32px;
-  line-height: 40px;
-  letter-spacing: -0.5px;
-  font-weight: 900;
-  padding-bottom: 0.75em;
-  margin: 0;
-  padding-top: 0px;
-  padding-right: 0px;
-  padding-left: 0px;
-}
-.card-body {
-  padding: 24px;
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-  -ms-flex-direction: column;
-  flex-direction: column;
-  background-color: #fff;
-}
-.card-body-plan {
-  padding-bottom: 16px;
-  margin: 0 0 24px;
-  border-bottom: 1px solid #f0f0f0;
-  display: block;
-  grid-template-columns: 1fr 48px 1fr;
-}
-.card-body-plan-inside {
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-  -ms-flex-direction: column;
-  flex-direction: column;
-  min-height: 100%;
-  -webkit-box-pack: justify;
-  -ms-flex-pack: justify;
-  justify-content: space-between;
-}
-.card-body-plan-content {
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 24px;
-  letter-spacing: 0px;
-  width: 100%;
-}
-.note {
-  margin-bottom: 1.5em;
-  padding: 0;
-}
-.note-content {
-  font-size: 16px;
-  background: #f8f8f8;
-  border: 1px solid #d9dadc;
-  border-radius: 4px;
-  padding: 16px;
-  margin: 0;
-}
+<style lang="sass" scoped>
+@import "./style/overview.sass"
 </style>

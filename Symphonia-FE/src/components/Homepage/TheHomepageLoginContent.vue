@@ -8,9 +8,11 @@
       }"
     >
       <v-container style="padding-top:130px;">
+        <notification-popup></notification-popup>
         <v-row>
           <v-col md="10" offset-md="1" xs="12">
             <h1
+              v-if="!isPremium()"
               class="premium-header"
               v-bind:class="{
                 'premium-header-sm': isSm(),
@@ -19,12 +21,22 @@
             >
               Go Premium. Be happy.
             </h1>
+            <h1
+              v-if="isPremium()"
+              class="premium-header"
+              v-bind:class="{
+                'premium-header-sm': isSm(),
+                'premium-header-xs': isXs()
+              }"
+            >
+              Welcome back !
+            </h1>
           </v-col>
         </v-row>
 
-        <v-row>
+        <v-row v-if="!isPremium()">
           <v-col md="10" offset-md="1" xs="12" align="center">
-            <router-link to="/download" class="download-button-large">
+            <router-link to="/premium" class="download-button-large">
               start free trial
             </router-link>
           </v-col>
@@ -51,7 +63,7 @@
         </p>
       </v-row>
       <v-row justify="center">
-        <router-link to="/" class="listen-button">
+        <router-link to="/webhome/home" class="listen-button">
           Listen on Symphonia
         </router-link>
       </v-row>
@@ -172,9 +184,12 @@
 </template>
 
 <script>
-import getDeviceSize from "../../mixins/getDeviceSize"
-import axios from "axios";
-
+import getDeviceSize from "../../mixins/getDeviceSize";
+import isLoggedIn from "../../mixins/userService/isLoggedIn";
+import isNotificationsAllowed from "../../mixins/userService/isNotificationsAllowed";
+import getuserToken from "../../mixins/userService/getUserToken";
+import isPremium from "../../mixins/userService/isPremium";
+import NotificationPopup from "../Notifications/NotificationPopUp";
 /**
  * The homepage content after login.
  * @version 1.0.0
@@ -182,25 +197,35 @@ import axios from "axios";
 
 export default {
   name: "HomepageLoginContent",
-
-  components: {},
-
   data() {
     return {
       bestSixSongsLoaded: false,
       bestSixSongs: false
     };
   },
-
-  mounted: function() {
-    axios.get("/v1/bestsongs").then(response => {
-      let list = response.data.data[0].attributes.songs;
-      this.bestSixSongsLoaded = true;
-      this.bestSixSongs = list;
-    });
+  components: {
+    NotificationPopup
   },
-
-  mixins: [getDeviceSize]
+  created() {
+    if (this.isNotificationsAllowed()) {
+      //get registration token from the user if the user is logged in
+      this.$store.dispatch(
+        "notification/getRegistrationToken",
+        this.getuserToken()
+      );
+      //set up a listener to catch notification messages in webhome
+      this.$store.dispatch("notification/setRecieveNotificationHandler");
+      //set up a listener for any change in token in the fcm server to refersh the token
+      this.$store.dispatch("notification/setRefreshTokenHandler");
+    }
+  },
+  mixins: [
+    getDeviceSize,
+    isLoggedIn,
+    getuserToken,
+    isNotificationsAllowed,
+    isPremium
+  ]
 };
 </script>
 

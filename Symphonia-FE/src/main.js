@@ -16,8 +16,40 @@ if (process.env.NODE_ENV === "development") {
 
 //configure axios base url
 axios.defaults.baseURL = "/api";
-//axios.defaults.baseURL = "http://localhost:3000"
-//axios.defaults.headers.common['Authorization'] = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVlODJhNDgwNTQ2NjA2NzJmZDY5OTg4MyIsImlhdCI6MTU4NTg3NzMxOCwiZXhwIjoxNTg1ODgwOTE4fQ.6AylaCVfdT-M-BXyPik_Xc7DPJd_Os9W2fUnmKhovEA";
+//axios.defaults.baseURL = "https://thesymphonia.ddns.net/api";
+
+//intializing the facebook sdk ////////////////////////////////////////////////////////////////
+//funtion taken from https://github.com/adi518/vue-facebook-login-component/blob/master/packages/vue-facebook-login-component/src/Sdk.js
+function initSdk(options) {
+  return new Promise(resolve => {
+    // prettier-ignore
+    window.fbAsyncInit = function() {
+      window.FB.init(options)
+      resolve(window.FB)
+    }; // eslint-disable-line
+    /* eslint-disable */
+    // prettier-ignore
+    (function (d, s, id) {
+      const fjs = d.getElementsByTagName(s)[0]
+      if (d.getElementById(id)) { return; }
+      const js = d.createElement(s); js.id = id
+      js.src = '//connect.facebook.net/en_US/sdk.js'
+      fjs.parentNode.insertBefore(js, fjs)
+    }(document, 'script', 'facebook-jssdk'))
+    /* eslint-enable */
+  });
+}
+
+function initializeFacebookSDk() {
+  initSdk({
+    appId: "820827945085597",
+    xfbml: true, // Parse social plugins on this webpage.
+    version: "v7.0" // Use this Graph API version for this call.
+  });
+}
+
+initializeFacebookSDk();
+//////////////////////////////////////////////////////////////////////////////////////////////////
 
 new Vue({
   router,

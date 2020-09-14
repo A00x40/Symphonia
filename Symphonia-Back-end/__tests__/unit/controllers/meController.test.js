@@ -1,8 +1,10 @@
 const controller = require('./../../../controllers/meController');
 const { User } = require('./../../../models/userModel');
+const { Notification } = require('./../../../models/notificationsModel');
 const mongoose = require('mongoose');
 const AppError = require('../../../utils/appError');
 const { mockResponse } = require('../../utils/Requests');
+const { History } = require('../../../models/historyModel');
 describe('player.extention', () => {
   it('should return audio/mpeg if the file extention is .mp3 ', () => {
     expect(controller.getMimeNameFromExt('.mp3')).toEqual('audio/mpeg');
@@ -208,6 +210,87 @@ describe('meController.volume', () => {
     expect(user.queue.volume).toEqual('90');
   });
 });
+
+describe('meController.updateCurrentUserProfile', () => {
+  let req, res, next, user;
+  user = { _id: mongoose.Types.ObjectId() };
+  const exec = async () => {
+    res = mockResponse();
+    next = jest.fn();
+    req = {
+      user,
+      body: { image: 'base64ImageBuffer' },
+      protocol: 'https',
+      get: jest.fn().mockReturnValue('thesymphonia.ddns.net')
+    };
+    await controller.updateCurrentUserProfile(req, res, next);
+  };
+  it('should return new user public profile data after update', async () => {
+    controller.prepareAndSaveImage = jest.fn();
+    User.findByIdAndUpdate = jest.fn().mockResolvedValue(user);
+    await exec();
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(user);
+  });
+});
+
+describe('meController.topTracksAndArtists', () => {
+  let req, res, next;
+  const exec = async () => {
+    res = mockResponse();
+    next = jest.fn();
+    await controller.topTracksAndArtists(req, res, next);
+  };
+  it('should return  top artists if type is artist', async () => {
+    req = {
+      params: { type: 'artist' },
+      query: {}
+    };
+    const artist = { _id: mongoose.Types.ObjectId() };
+    controller.getTopArtistsAndTracks = jest.fn().mockResolvedValue(artist);
+    await exec();
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ doc: artist });
+  });
+  it('should return  top tracks if type is track', async () => {
+    req = {
+      params: { type: 'track' },
+      query: {}
+    };
+    const track = { _id: mongoose.Types.ObjectId() };
+    controller.getTopArtistsAndTracks = jest.fn().mockResolvedValue(track);
+    await exec();
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ doc: track });
+  });
+});
+
+describe('meController.topTracksAndArtists', () => {
+  let req, res, next, user, hist;
+  const exec = async () => {
+    res = mockResponse();
+    next = jest.fn();
+    await controller.recentlyPlayed(req, res, next);
+  };
+  it('should return history of the current user', async () => {
+    const user = {};
+    user._id = mongoose.Types.ObjectId();
+    user.select = jest.fn().mockReturnValue(user);
+    user.hist = hist;
+    user.history = 'history';
+    hist = {
+      data: 'user history',
+      select: jest.fn().mockReturnValue('history')
+    };
+    req = { user };
+    User.findById = jest.fn().mockReturnValue(user);
+    History.findById = jest.fn().mockReturnValue(hist);
+    await exec();
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ history: [] });
+  });
+});
+
 describe('meController.userProfile', () => {
   let req, res, next, user;
   user = { _id: mongoose.Types.ObjectId() };
@@ -223,7 +306,7 @@ describe('meController.userProfile', () => {
     controller.getProfileInfo = jest.fn().mockResolvedValue(user);
     await exec();
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ currentUser: user });
+    expect(res.json).toHaveBeenCalledWith(user);
   });
   it('should return null because no user with that id ', async () => {
     req = {
@@ -252,9 +335,7 @@ describe('me.CurrentUserProfile', () => {
     controller.getProfileInfo = jest.fn().mockResolvedValue(user);
     await exec();
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      currentUser: user
-    });
+    expect(res.json).toHaveBeenCalledWith(user);
   });
 });
 
@@ -746,7 +827,14 @@ describe('meController.pushQueue', () => {
       queueTracks: [
         'http://localhost:3000/api/v1/me/player/tracks/5e7d2dc03429e24340ff1396',
         'http://localhost:3000/api/v1/me/player/tracks/5e7969965146d92e98ac3ef4'
-      ]
+      ],
+      currentlyPlaying: {
+        currentTrack:
+          'http://localhost:3000/api/v1/me/player/tracks/5e7d2dc03429e24340ff1396'
+      },
+      nextTrack:
+        'http://localhost:3000/api/v1/me/player/tracks/5e7969965146d92e98ac3ef4',
+      previousTrack: null
     }
   };
   const exec = async () => {
@@ -785,7 +873,14 @@ describe('meController.popQueue', () => {
         'http://localhost:3000/api/v1/me/player/tracks/5e7d2dc03429e24340ff1396',
         'http://localhost:3000/api/v1/me/player/tracks/5e7969965146d92e98ac3ef4',
         'http://localhost:3000/api/v1/me/player/tracks/5e7969965146d92e98ac3ef7'
-      ]
+      ],
+      currentlyPlaying: {
+        currentTrack:
+          'http://localhost:3000/api/v1/me/player/tracks/5e7d2dc03429e24340ff1396'
+      },
+      nextTrack:
+        'http://localhost:3000/api/v1/me/player/tracks/5e7969965146d92e98ac3ef4',
+      previousTrack: null
     }
   };
 
@@ -825,3 +920,203 @@ describe('meController.popQueue', () => {
     expect(next).toHaveBeenCalledWith(error);
   });
 });
+
+describe('activatePremium', () => {
+  let req, res, next, user, newToken;
+  beforeEach(() => {
+    res = mockResponse();
+    next = jest.fn();
+    const _id = mongoose.Types.ObjectId();
+    newToken = 'new-jwt-generated-token';
+    user = {
+      _id,
+      save: jest.fn()
+    };
+    req = {
+      params: {
+        token: 'premiumToken'
+      }
+    };
+    User.findOne = jest.fn().mockReturnValue(user);
+  });
+  it('should respond with success message if provided activation token is valid', async () => {
+    await controller.premium(req, res, next);
+    expect(user.premium).toEqual(true);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({ message: 'User is now premium!' });
+  });
+  it('should respond with 400 if activation token is invalid', async () => {
+    User.findOne = jest.fn().mockReturnValue(undefined);
+    await controller.premium(req, res, next);
+    expect(next).toHaveBeenCalledWith(
+      new AppError('Token is invalid or has expired', 400)
+    );
+  });
+});
+
+describe('setRegistrationToken', () => {
+  let req, res, next, user;
+  beforeEach(() => {
+    res = mockResponse();
+    next = jest.fn();
+    const _id = mongoose.Types.ObjectId();
+    user = {
+      _id,
+      save: jest.fn()
+    };
+    req = {
+      user,
+      body: {
+        token: 'registrationToken'
+      }
+    };
+    User.findById = jest.fn().mockReturnValue(user);
+  });
+  it('should add the provided reg token in the body to the user object', async () => {
+    await controller.setRegistrationToken(req, res, next);
+    expect(user.registraionToken).toEqual(req.body.token);
+    expect(user.save).toHaveBeenCalled();
+  });
+});
+
+describe('getNotificationHistory', () => {
+  let req, res, next, user, notifications;
+  beforeEach(() => {
+    res = mockResponse();
+    next = jest.fn();
+    const _id = mongoose.Types.ObjectId();
+    notifications = { _id: mongoose.Types.ObjectId() };
+    user = {
+      _id,
+      notification: '1',
+      save: jest.fn()
+    };
+    req = {
+      user,
+      body: {
+        token: 'registrationToken'
+      }
+    };
+    Notification.findById = jest.fn().mockReturnValue(notifications);
+    const query = { select: jest.fn().mockReturnValue(user) };
+    User.findById = jest.fn().mockReturnValue(query);
+  });
+  it('should return the notifications of the user successfully', async () => {
+    await controller.getNotificationsHistory(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ notifications });
+  });
+
+  it('should return error if no user has not activated notifications', async () => {
+    user.notification = undefined;
+    await controller.getNotificationsHistory(req, res, next);
+    expect(next).toHaveBeenCalledWith(
+      new AppError(`this user doesn't have notifications history`, 404)
+    );
+  });
+});
+
+describe('applyPremium', () => {
+  let req, res, next, user, notifications;
+  beforeEach(() => {
+    res = mockResponse();
+    next = jest.fn();
+    const _id = mongoose.Types.ObjectId();
+    notifications = { _id: mongoose.Types.ObjectId() };
+    user = {
+      name: 'premium',
+      _id,
+      createPremiumToken: jest.fn().mockReturnValue('premiumTokenEmail'),
+      save: jest.fn()
+    };
+    req = {
+      user,
+      protocol: 'https',
+      hostname: 'thesymphonia.ddns.net'
+    };
+
+    User.findById = jest.fn().mockReturnValue(user);
+  });
+  it('should send email with the premium token and return status 200', async () => {
+    await controller.applyPremium(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'Token sent to email!',
+      status: 'success'
+    });
+  });
+
+  it('should return error if sending email was not successful', async () => {
+    process.env.TEST_REJECT = true;
+    await controller.applyPremium(req, res, next);
+    process.env.TEST_REJECT = undefined;
+    expect(next).toHaveBeenCalledWith(
+      new AppError(
+        `There was an error sending the email. Try again later!`,
+        500
+      )
+    );
+  });
+});
+
+// describe('meController.playInfo', () => {
+//   let req, res, next, user, track;
+//   track = {
+//     _id: '5e7d2e023429e24340ff1398',
+//     premium: true,
+//     type: 'track'
+//   };
+//   user = {
+//     save: jest.fn().mockResolvedValue(1),
+//     createPlayerToken: jest
+//       .fn()
+//       .mockResolvedValue(
+//         '82c2579f5ce1c3177a657df01742016bcd2ad24cd95d26ab1166946f844c846a'
+//       ),
+//     _id: '5e84b966681ae439edfc1d6f',
+//     queue: {
+//       queueTracks: [
+//         'https://thesymphonia.ddns.net/api/v1/me/player/tracks/5e7d2e023429e24340ff1398',
+//         'https://thesymphonia.ddns.net/api/v1/me/player/tracks/5e8a1e767937ec4d40c6debc',
+//         'https://thesymphonia.ddns.net/api/v1/me/player/tracks/5e8a1e0f7937ec4d40c6deba'
+//       ],
+//       currentlyPlaying: {
+//         currentTrack:
+//           'https://thesymphonia.ddns.net/api/v1/me/player/tracks/5e8a1e0f7937ec4d40c6deba',
+//         device: '5edfb6d3bf2a1b231598e77a'
+//       },
+//       previousTrack:
+//         'https://thesymphonia.ddns.net/api/v1/me/player/tracks/5e8a1e767937ec4d40c6debc',
+//       nextTrack: null,
+//       devices: [{ _id: '5edfb6d3bf2a1b231598e77a', devicesName: 'Chrome' }],
+//       contextId: null,
+//       contextType: 'liked'
+//     },
+//     premium: true,
+//     history: '5edf960fb9674a075be8e74e',
+//     playerToken:
+//       '82c2579f5ce1c3177a657df01742016bcd2ad24cd95d26ab1166946f844c846a',
+//     playerTokenExpires: Date('1591720835775')
+//   };
+//   user.select = jest.fn().mockReturnValue(user);
+//   const exec = async () => {
+//     res = mockResponse();
+//     next = jest.fn();
+//     await controller.playInfo(req, res, next);
+//   };
+//   it('should return not found error', async () => {
+//     req = {
+//       user,
+//       body: {},
+//       params: { track_id: '5' }
+//     };
+
+//     User.findById = jest.fn().mockResolvedValue(user);
+//     Track.findById = jest.fn().mockResolvedValue(track);
+
+//     await exec();
+//     expect(next).toHaveBeenCalledWith(
+//       new AppError('this track is for premium users only', 400)
+//     );
+//   });
+// });

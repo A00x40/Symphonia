@@ -3,7 +3,7 @@
     <h1>Playlists</h1>
     <CardGrid
       :cardItems="cardItems"
-      v-on:order="menuOrder"
+      :contextMenu="contextMenu"
       cardStyle="playlist"
     />
   </v-content>
@@ -11,137 +11,47 @@
 
 <script>
 import CardGrid from "../general/CardGrid";
-
+import { mapGetters, mapActions } from "vuex";
+import getuserToken from "../../mixins/userService/getUserToken";
+/**
+ * @displayName Library playlists
+ * @example [none]
+ */
 export default {
   name: "Playlists",
   components: {
     CardGrid
   },
-
+  props: ["contextMenu"],
   data() {
     return {
-      // Custom context menu data section
-      // menuList: items of the menu to be displayed "set to likedSongsMenu or playlistsMenu"
-      // disabledMenu: flag to disable menu on outside card click - showMenu: menu v-model
       cardItems: {
-        menuList: null,
-        disableMenu: false,
-        showMenu: false,
-        likedSongsMenu: [{ title: "Copy Link" }],
-        playlistsMenu: [
-          { title: "Start Radio" },
-          { title: "Make Secret" },
-          { title: "Delete" },
-          { title: "Copy Playlist link" }
-        ],
-
-        // Liked Songs Cards data section
-        // likedSongs: hardcoded data "placeholders"
-        likedSongs: [
-          { title: "Lose your self", artist: "Eminem" },
-          { title: "Lose your self", artist: "Eminem" },
-          { title: "Lose your self", artist: "Eminem" },
-          { title: "Lose your self", artist: "Eminem" },
-          { title: "Lose your self", artist: "Eminem" },
-          { title: "Lose your self", artist: "Eminem" },
-          { title: "Lose your self", artist: "Eminem" },
-          { title: "Lose your self", artist: "Eminem" },
-          { title: "Lose your self", artist: "Eminem" },
-          { title: "Lose your self", artist: "Eminem" }
-        ],
-
-        // Playlists Cards data section
-        // hoveredCardIndex: index of the hovered card, used to make the play button of the hovered playlist visable - playlists: hardcoded data "placeholders"
-        hoveredCardIndex: null,
-        items: [
-          {
-            name: "Amr Diab Collection",
-            image:
-              "https://cdn.platinumlist.net/upload/artist/tamer_hosny_451-mobile1514454683.jpeg",
-            description: "1 new playlist",
-            url:"eejnwe1",
-            id:"8"
-          },
-          {
-            name: "Amr Diab Collection",
-            image:
-              "https://cdn.platinumlist.net/upload/artist/tamer_hosny_451-mobile1514454683.jpeg",
-            description: "1 new playlist",
-            url:"gmlkg1",
-            id:"7"
-          },
-          {
-            name: "Amr Diab Collection",
-            image:
-              "https://cdn.platinumlist.net/upload/artist/tamer_hosny_451-mobile1514454683.jpeg",
-            description: "1 new playlist",
-            url:"gregrelgpo[few1",
-            id:"6"
-          },
-          {
-            name: "Amr Diab Collection",
-            image:
-              "https://cdn.platinumlist.net/upload/artist/tamer_hosny_451-mobile1514454683.jpeg",
-            description: "1 new playlist",
-            url:"'hrl[t1",
-            id:"5"
-          },
-          {
-            name: "Amr Diab Collection",
-            image:
-              "https://cdn.platinumlist.net/upload/artist/tamer_hosny_451-mobile1514454683.jpeg",
-            description: "1 new playlist",
-            url:"1mkgreognre",
-            id:"4"
-          },
-          {
-            name: "Amr Diab Collection",
-            image:
-              "https://cdn.platinumlist.net/upload/artist/tamer_hosny_451-mobile1514454683.jpeg",
-            description: "1 new playlist",
-            url:"1jorewiorjrwer",
-            id:"3"
-
-          },
-          {
-            name: "Amr Diab Collection",
-            image:
-              "https://cdn.platinumlist.net/upload/artist/tamer_hosny_451-mobile1514454683.jpeg",
-            description: "1 new playlist",
-            url:"12mfnernkjfre1",
-            id:"2"
-          },
-          {
-            name: "Amr Diab Collection",
-            image:
-              "https://cdn.platinumlist.net/upload/artist/tamer_hosny_451-mobile1514454683.jpeg",
-            description: "1 new playlist",
-            url:"1glreoreo",
-            id:"1"
-          }
-        ]
+        likedSongs: [],
+        items: []
       },
       contextMenuChoice: null,
       contextMenuCardIndex: null
     };
   },
-  created() {},
+  mixins: [getuserToken],
+  created() {
+    this.getPlaylists(this.getuserToken());
+    this.getTracks(this.getuserToken());
+  },
+  computed: {
+    ...mapGetters("playlist", ["likedPlaylists"]),
+    ...mapGetters("track", ["tracksGetter"])
+  },
   methods: {
-    // cardHover: called when card is hover to save its index, and close other context menus
-    // note: the index of the liked songs card = -1
-    menuOrder(menuItem, cardIndex) {
-      this.contextMenuChoice = menuItem;
-      this.contextMenuCardIndex = cardIndex;
-    }
+    ...mapActions("playlist", ["getPlaylists"]),
+    ...mapActions("track", ["getTracks"])
   },
   watch: {
-    contextMenuChoice: function() {
-      if (this.contextMenuChoice === null) return;
-      console.log(this.contextMenuChoice);
-      console.log(this.contextMenuCardIndex);
-
-
-      this.contextMenuChoice = null;
+    likedPlaylists: function(newValue) {
+      this.cardItems.items = newValue;
+    },
+    tracksGetter: function(newValue) {
+      this.cardItems.likedSongs = newValue;
     }
   }
 };

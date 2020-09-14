@@ -1,265 +1,294 @@
 {
-    "artists": {
-        "items": [
-          {
-            "followers": {
-              "href": null,
-              "total": 306565
-            },
-            "genres": [],
-            "href": "https://api.symphonia.com/v1/artists/1",
-            "images": [
-              {
-                "height": 816,
-                "url": "http://source.unsplash.com/kcV7BxcVtU4",
-                "width": 1000
-              }
-            ],
-            "name": "Yasser Al-Dosari",
-            "popularity": 90,
-            "type": "artist"
-           } ,
-           {
-            "followers": {
-              "href": null,
-              "total": 306565
-            },
-            "genres": [],
-            "href": "https://api.symphonia.com/v1/artists/2",
-            "images": [
-              {
-                "height": 816,
-                "url": "http://source.unsplash.com/bG8U3kaZltE",
-                "width": 1000
-              }
-            ],
-            "name": "Nasser Al-Qatami",
-            "popularity": 90,
-            "type": "artist"
-           },
-           {
-            "followers": {
-              "href": null,
-              "total": 306565
-            },
-            "genres": [],
-            "href": "https://api.symphonia.com/v1/artists/3",
-            "images": [
-              {
-                "height": 816,
-                "url": "http://source.unsplash.com/b6fKcY3s8VE",
-                "width": 1000
-              }
-            ],
-            "name": "Wadeea Al-Yamani",
-            "popularity": 90,
-            "type": "artist"
-           },
-           {
-            "followers": {
-              "href": null,
-              "total": 306565
-            },
-            "genres": [],
-            "href": "https://api.symphonia.com/v1/artists/3",
-            "images": [
-              {
-                "height": 816,
-                "url": "http://source.unsplash.com/Y20JJ_ddy9M",
-                "width": 1000
-              }
-            ],
-            "name": "Maher Zain",
-            "popularity": 90,
-            "type": "artist"
-           },
-          {
-            "external_urls": {
-              "spotify": "https://open.spotify.com/artist/1ZpCdBZ3rL0mXxMhzhOBvi"
-            },
-            "followers": {
-              "href": null,
-              "total": 9015
-            },
-            "genres": [],
-            "href": "https://api.spotify.com/v1/artists/1ZpCdBZ3rL0mXxMhzhOBvi",
-            "id": "1ZpCdBZ3rL0mXxMhzhOBvi",
-            "images": [
-              {
-                "height": 640,
-                "url": "https://i.scdn.co/image/50cf866e9903b3ed98f3406a62d6122292a48ffb",
-                "width": 640
-              },
-              {
-                "height": 320,
-                "url": "https://i.scdn.co/image/1866ac0ab2e0d76bb27e9b745b0f8bef88e641c1",
-                "width": 320
-              },
-              {
-                "height": 160,
-                "url": "https://i.scdn.co/image/d670b04d8bb404fb0cf60b6491923e7238f7e181",
-                "width": 160
-              }
-            ],
-            "name": "Mohammed Saeed",
-            "popularity": 36,
-            "type": "artist",
-            "uri": "spotify:artist:1ZpCdBZ3rL0mXxMhzhOBvi"
+  "artists": {
+    "items": [
+      {
+        "queue": {
+          "currentlyPlaying": {
+            "currentTrack": null
           },
-          {
-            "external_urls": {
-              "spotify": "https://open.spotify.com/artist/41g2nSmocqVLuYnmndxefu"
-            },
-            "followers": {
-              "href": null,
-              "total": 82536
-            },
-            "genres": [
-              "egyptian pop"
-            ],
-            "href": "https://api.spotify.com/v1/artists/41g2nSmocqVLuYnmndxefu",
-            "id": "41g2nSmocqVLuYnmndxefu",
-            "images": [
-              {
-                "height": 640,
-                "url": "https://i.scdn.co/image/ab67616d0000b27393dc589eb443c59ef93fbfb8",
-                "width": 640
-              },
-              {
-                "height": 300,
-                "url": "https://i.scdn.co/image/ab67616d00001e0293dc589eb443c59ef93fbfb8",
-                "width": 300
-              },
-              {
-                "height": 64,
-                "url": "https://i.scdn.co/image/ab67616d0000485193dc589eb443c59ef93fbfb8",
-                "width": 64
-              }
-            ],
-            "name": "Ahmed Kamel",
-            "popularity": 39,
-            "type": "artist",
-            "uri": "spotify:artist:41g2nSmocqVLuYnmndxefu"
-          },
-          {
-            "external_urls": {
-              "spotify": "https://open.spotify.com/artist/4o6vIkdmHiEXZOesrJj3KO"
-            },
-            "followers": {
-              "href": null,
-              "total": 30549
-            },
-            "genres": [
-              "egyptian hip hop",
-              "egyptian pop"
-            ],
-            "href": "https://api.spotify.com/v1/artists/4o6vIkdmHiEXZOesrJj3KO",
-            "id": "4o6vIkdmHiEXZOesrJj3KO",
-            "images": [
-              {
-                "height": 640,
-                "url": "https://i.scdn.co/image/4e2084132796c48fd88caaf215ab0e691bf631f3",
-                "width": 640
-              },
-              {
-                "height": 320,
-                "url": "https://i.scdn.co/image/b792412da65e330f8315c185fac23009b024e9dc",
-                "width": 320
-              },
-              {
-                "height": 160,
-                "url": "https://i.scdn.co/image/edf6bb6b22bc0e7a32b621a0afe62da968cdd19f",
-                "width": 160
-              }
-            ],
-            "name": "Abyusif",
-            "popularity": 46,
-            "type": "artist",
-            "uri": "spotify:artist:4o6vIkdmHiEXZOesrJj3KO"
-          },
-          {
-            "external_urls": {
-              "spotify": "https://open.spotify.com/artist/5abSRg0xN1NV3gLbuvX24M"
-            },
-            "followers": {
-              "href": null,
-              "total": 1483349
-            },
-            "genres": [
-              "arab pop",
-              "belly dance",
-              "egyptian pop",
-              "persian pop",
-              "rif"
-            ],
-            "href": "https://api.spotify.com/v1/artists/5abSRg0xN1NV3gLbuvX24M",
-            "id": "5abSRg0xN1NV3gLbuvX24M",
-            "images": [
-              {
-                "height": 640,
-                "url": "https://i.scdn.co/image/ee11ffb4c0f334e4c958ed051bbaf5f720751c9d",
-                "width": 640
-              },
-              {
-                "height": 320,
-                "url": "https://i.scdn.co/image/c4818b1f9d0c7a793d421b51c63d82c8c768795c",
-                "width": 320
-              },
-              {
-                "height": 160,
-                "url": "https://i.scdn.co/image/f3faab75ae00902f4cbb00e00a9876fbcba41a29",
-                "width": 160
-              }
-            ],
-            "name": "Amr Diab",
-            "popularity": 61,
-            "type": "artist",
-            "uri": "spotify:artist:5abSRg0xN1NV3gLbuvX24M"
-          },
-          {
-            "external_urls": {
-              "spotify": "https://open.spotify.com/artist/6MQnUjIjnIOfHDFzqBJOAl"
-            },
-            "followers": {
-              "href": null,
-              "total": 341957
-            },
-            "genres": [
-              "arab pop",
-              "classic arab pop",
-              "syrian pop"
-            ],
-            "href": "https://api.spotify.com/v1/artists/6MQnUjIjnIOfHDFzqBJOAl",
-            "id": "6MQnUjIjnIOfHDFzqBJOAl",
-            "images": [
-              {
-                "height": 640,
-                "url": "https://i.scdn.co/image/ab67616d0000b273f15b82248e74958c7ffcb1b2",
-                "width": 640
-              },
-              {
-                "height": 300,
-                "url": "https://i.scdn.co/image/ab67616d00001e02f15b82248e74958c7ffcb1b2",
-                "width": 300
-              },
-              {
-                "height": 64,
-                "url": "https://i.scdn.co/image/ab67616d00004851f15b82248e74958c7ffcb1b2",
-                "width": 64
-              }
-            ],
-            "name": "Assala Nasri",
-            "popularity": 47,
-            "type": "artist",
-            "uri": "spotify:artist:6MQnUjIjnIOfHDFzqBJOAl"
-          }
-        ],
-        "next": null,
-        "total": 5,
-        "cursors": {
-          "after": null
+          "queueTracks": [],
+          "previousTrack": null,
+          "repeat": false,
+          "shuffle": false,
+          "play": false,
+          "repeatOnce": false,
+          "devices": [
+            {
+              "_id": "5e8a5b0db2859207bf1fc2e9",
+              "devicesName": "chrome"
+            }
+          ]
         },
-        "limit": 20,
-        "href": "https://api.spotify.com/v1/me/following?type=artist&limit=20"
-      }    
+        "followersCount": 10,
+        "followed": true,
+        "followedUsers": [12, 23, 432, 5, 6, 3],
+        "tracks": [],
+        "ownedPlaylists": [],
+        "followedAlbums": [],
+        "followedTracks": [],
+        "_id": "5e8137aa54660672fd699882",
+        "email": "test3@test.com",
+        "name": "Tame Impala",
+        "dateOfBirth": "1978-06-25T00:00:00.000Z",
+        "gender": "male",
+        "type": "artist",
+        "imageUrl": "https://i1.sndcdn.com/artworks-000102741362-wev1tn-t500x500.jpg"
+      },
+      {
+        "queue": {
+          "currentlyPlaying": {
+            "currentTrack": null
+          },
+          "queueTracks": [],
+          "previousTrack": null,
+          "repeat": false,
+          "shuffle": false,
+          "play": false,
+          "repeatOnce": false,
+          "devices": [
+            {
+              "_id": "5e8a5b0db2859207bf1fc2e9",
+              "devicesName": "chrome"
+            }
+          ]
+        },
+        "followersCount": 7,
+        "followed": true,
+        "followedUsers": [12, 23, 432, 5, 6, 3],
+        "tracks": [],
+        "ownedPlaylists": [],
+        "followedAlbums": [],
+        "followedTracks": [],
+        "_id": "5e82a48054660672fd699883",
+        "email": "test4@test.com",
+        "name": "Interpol",
+        "dateOfBirth": "1979-12-25T00:00:00.000Z",
+        "gender": "male",
+        "type": "artist",
+        "imageUrl": "https://i1.sndcdn.com/artworks-000102741362-wev1tn-t500x500.jpg"
+      },
+      {
+        "queue": {
+          "currentlyPlaying": {
+            "currentTrack": null
+          },
+          "queueTracks": [],
+          "previousTrack": null,
+          "repeat": false,
+          "shuffle": false,
+          "play": false,
+          "repeatOnce": false,
+          "devices": [
+            {
+              "_id": "5e8a5b0db2859207bf1fc2e9",
+              "devicesName": "chrome"
+            }
+          ]
+        },
+        "followersCount": 154,
+        "followed": true,
+        "followedUsers": [12, 23, 432, 5, 6, 3],
+        "tracks": [],
+        "ownedPlaylists": [],
+        "followedAlbums": [],
+        "followedTracks": [],
+        "_id": "5e84b966681ae439edfc1d6f",
+        "email": "test5@test.com",
+        "name": "Minuit Machine",
+        "dateOfBirth": "1995-06-25T00:00:00.000Z",
+        "gender": "female",
+        "popularity": 90,
+        "type": "artist",
+        "imageUrl": "https://i1.sndcdn.com/artworks-000102741362-wev1tn-t500x500.jpg"
+      },
+      {
+        "queue": {
+          "currentlyPlaying": {
+            "currentTrack": "http://zasymphonia.ddns.net/api/v1/me/player/tracks/5e7d2e023429e24340ff1398",
+            "device": "5e8cc697d35f1d07963e2fe9"
+          },
+          "queueTracks": [
+            "http://zasymphonia.ddns.net/api/v1/me/player/tracks/5e7d2dc03429e24340ff1396",
+            "http://zasymphonia.ddns.net/api/v1/me/player/tracks/5e7d2ddd3429e24340ff1397",
+            "http://zasymphonia.ddns.net/api/v1/me/player/tracks/5e7d2e023429e24340ff1398"
+          ],
+          "previousTrack": "http://zasymphonia.ddns.net/api/v1/me/player/tracks/5e7d2ddd3429e24340ff1397",
+          "repeat": false,
+          "shuffle": false,
+          "play": false,
+          "repeatOnce": false,
+          "nextTrack": null,
+          "devices": [
+            {
+              "_id": "5e8cbeed14d69c47ddfe466a",
+              "devicesName": "Chrome"
+            },
+            {
+              "_id": "5e8cbef414d69c47ddfe466b",
+              "devicesName": "Chrome"
+            },
+            {
+              "_id": "5e8cbeff14d69c47ddfe466d",
+              "devicesName": "Chrome"
+            },
+            {
+              "_id": "5e8cc01d14d69c47ddfe4673",
+              "devicesName": "Chrome"
+            },
+            {
+              "_id": "5e8cc01d14d69c47ddfe4674",
+              "devicesName": "Chrome"
+            },
+            {
+              "_id": "5e8cc02814d69c47ddfe4676",
+              "devicesName": "Chrome"
+            },
+            {
+              "_id": "5e8cc02d14d69c47ddfe4678",
+              "devicesName": "Chrome"
+            },
+            {
+              "_id": "5e8cc697d35f1d07963e2fe8",
+              "devicesName": "Chrome"
+            },
+            {
+              "_id": "5e8cc697d35f1d07963e2fe9",
+              "devicesName": "Chrome"
+            }
+          ]
+        },
+        "followersCount": 2,
+        "followed": true,
+        "followedUsers": [12, 23, 432, 5, 6, 3],
+        "tracks": [
+          "5e8a1ea07937ec4d40c6debf",
+          "5e8a37d0d56ea252c3860a1a",
+          "5e8a39f24e11cd46c8bde654"
+        ],
+        "ownedPlaylists": [],
+        "followedAlbums": [],
+        "followedTracks": [],
+        "_id": "5e80fd1684c71f6ffb534a08",
+        "email": "test6@test.com",
+        "name": "TR/ST",
+        "dateOfBirth": "1985-12-05T00:00:00.000Z",
+        "gender": "male",
+        "popularity": 90,
+        "type": "artist",
+        "imageUrl": "https://source.unsplash.com/collection/190727/1600x900",
+        "__v": 22,
+        "last_login": "2020-04-07T18:29:42.291Z"
+      },
+
+      {
+        "queue": {
+          "currentlyPlaying": {
+            "currentTrack": null
+          },
+          "queueTracks": [],
+          "previousTrack": null,
+          "repeat": false,
+          "shuffle": false,
+          "play": false,
+          "repeatOnce": false,
+          "devices": [
+            {
+              "_id": "5e8ba7b243427f32bcb6e75d",
+              "devicesName": "chrome"
+            }
+          ]
+        },
+        "followersCount": 104,
+        "followed": true,
+        "followedUsers": [12, 23, 432, 3],
+        "tracks": [],
+        "ownedPlaylists": [],
+        "followedAlbums": [],
+        "followedTracks": [],
+        "_id": "5e8c770de37ac11ac4f0135c",
+        "email": "test15@test.com",
+        "name": "Drab Majesty",
+        "dateOfBirth": "1987-07-16T00:00:00.000Z",
+        "gender": "male",
+        "type": "artist",
+        "imageUrl": "https://source.unsplash.com/collection/190727/1600x900"
+      },
+
+      {
+        "queue": {
+          "currentlyPlaying": {
+            "currentTrack": null
+          },
+          "queueTracks": [],
+          "previousTrack": null,
+          "repeat": false,
+          "shuffle": false,
+          "play": false,
+          "repeatOnce": false,
+          "devices": [
+            {
+              "_id": "5e8ba7b243427f32bcb6e75d",
+              "devicesName": "chrome"
+            }
+          ]
+        },
+        "followersCount": 164,
+        "followed": false,
+        "followedUsers": [23, 432, 5, 6, 3],
+        "tracks": [],
+        "ownedPlaylists": [],
+        "followedAlbums": [],
+        "followedTracks": [],
+        "_id": "1",
+        "email": "test15@test.com",
+        "name": "Yasser Al-Dosari",
+        "dateOfBirth": "1987-07-16T00:00:00.000Z",
+        "gender": "male",
+        "type": "artist",
+        "popularity": 90,
+        "imageUrl": "https://i1.sndcdn.com/artworks-000102741362-wev1tn-t500x500.jpg"
+      },
+      {
+        "queue": {
+          "currentlyPlaying": {
+            "currentTrack": null
+          },
+          "queueTracks": [],
+          "previousTrack": null,
+          "repeat": false,
+          "shuffle": false,
+          "play": false,
+          "repeatOnce": false,
+          "devices": [
+            {
+              "_id": "5e8ba7b243427f32bcb6e75d",
+              "devicesName": "chrome"
+            }
+          ]
+        },
+        "followersCount": 19,
+        "followed": false,
+        "followedUsers": [12, 3],
+        "tracks": [],
+        "ownedPlaylists": [],
+        "followedAlbums": [],
+        "followedTracks": [],
+        "_id": "2",
+        "email": "test15@test.com",
+        "name": "Nasser Al-Qatami",
+        "dateOfBirth": "1987-07-16T00:00:00.000Z",
+        "gender": "male",
+        "type": "artist",
+        "popularity": 90,
+        "imageUrl": "https://i1.sndcdn.com/artworks-000102741362-wev1tn-t500x500.jpg"
+      }
+    ],
+    "next": null,
+    "total": 5,
+    "cursors": {
+      "after": null
+    },
+    "limit": 20,
+    "href": "https://api.spotify.com/v1/me/following?type=artist&limit=20"
+  }
 }

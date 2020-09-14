@@ -4,6 +4,11 @@ const Joi = require('@hapi/joi').extend(require('@hapi/joi-date'));
 const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const mongoose_delete = require('mongoose-delete');
+
+/**
+ * @module Models.user
+ */
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -52,8 +57,12 @@ const userSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['user', 'premium-user', 'artist'],
+    enum: ['user', 'artist'],
     defult: 'user'
+  },
+  premium: {
+    type: Boolean,
+    default: false
   },
   gender: {
     type: String,
@@ -69,6 +78,11 @@ const userSchema = new mongoose.Schema({
   history: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'History',
+    select: false
+  },
+  notification: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Notification',
     select: false
   },
   queue: {
@@ -93,6 +107,8 @@ const userSchema = new mongoose.Schema({
         devicesName: String
       }
     ],
+    contextId: String,
+    contextType: String,
     repeatOnce: { type: Boolean, default: false },
     select: false
   },
@@ -120,24 +136,39 @@ const userSchema = new mongoose.Schema({
       ref: 'Album'
     }
   ],
+  followedTracks: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Track'
+    }
+  ],
   usersCount: {
     type: Number
   },
   passwordChangedAt: Date,
   passwordResetToken: String,
   passwordResetExpires: Date,
+  premiumToken: String,
+  premiumExpires: Date,
+  artistApplicationToken: String,
+  artistApplicationExpires: Date,
   googleId: String,
+  registraionToken: String,
   facebookId: String,
   imageFacebookUrl: String,
   imageGoogleUrl: String,
   imageUrl: String,
   last_login: Date,
+  playerToken: String,
+  playerTokenExpires: Date,
+  preiumExpires: Date,
   active: {
     type: Boolean,
     defult: true,
     select: false
   },
-  phone: String
+  phone: String,
+  bio: String
 });
 
 userSchema.pre('save', async function (next) {
@@ -153,11 +184,14 @@ userSchema.pre('save', async function (next) {
 });
 
 userSchema.pre('save', function (next) {
+  /* istanbul ignore else */
   if (!this.isModified('password') || this.isNew) return next();
 
+  /* istanbul ignore next */
   // to make sure the token is created after the password has been modified
   // because saving to the database is a bit slower than making the token
   this.passwordChangedAt = Date.now() - 1000;
+  /* istanbul ignore next */
   next();
 });
 
@@ -173,13 +207,27 @@ userSchema.pre(/^find/, function (next) {
   next();
 });
 
-// this function is to compare a provided password with the stored one
+/**
+ * this function is to compare a provided password with the stored one
+ * @function correctPassword
+ * @param {string} candidatePassword - the provided password to be checked
+ * @param {string} userPassword - the hashed password of the user from the database
+ * @returns {boolean} - true if the password matches the one in the database
+ */
+
 userSchema.methods.correctPassword = async function (
   candidatePassword,
   userPassword
 ) {
   return await bcrypt.compare(candidatePassword, userPassword);
 };
+
+/**
+ * to check whether the password was changed after a given data.
+ * @function changedPasswordAfter
+ * @param {number} JWTTimestamp - the unix timestamp of when the jwt token was created.
+ * @returns {boolean} - true if the password changed after the token was issued.
+ */
 
 userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   if (this.passwordChangedAt) {
@@ -195,6 +243,12 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   return false;
 };
 
+/**
+ * to make a JWT token for the user using the is as payload
+ * @function signToken
+ * @returns {string} - a json web token to identify the user and to be used in bearer token authorization
+ */
+
 userSchema.methods.signToken = function () {
   return jwt.sign(
     {
@@ -207,6 +261,12 @@ userSchema.methods.signToken = function () {
   );
 };
 
+/**
+ * creates a password reset token that is valid for 10 minutes only
+ * @function createPasswordResetToken
+ * @returns {string} - password reset token
+ */
+
 userSchema.methods.createPasswordResetToken = function () {
   const resetToken = crypto.randomBytes(32).toString('hex');
 
@@ -216,10 +276,67 @@ userSchema.methods.createPasswordResetToken = function () {
     .digest('hex');
 
   // the token to reset the password is valit only for 10 minutes
-  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+  this.passwordResetExpires = Date.now() + 60 * 60 * 1000;
 
   return resetToken;
 };
+/**
+ * creates a premium  token that is valid for 10 minutes only
+ * @function createPremiumToken
+ * @returns {string} - premium token
+ */
+
+userSchema.methods.createPremiumToken = function () {
+  const premiumToken = crypto.randomBytes(32).toString('hex');
+  this.premiumToken = crypto
+    .createHash('sha256')
+    .update(premiumToken)
+    .digest('hex');
+
+  // the token to be preimum is valit only for 10 minutes
+  this.premiumExpires = Date.now() + 60 * 60 * 1000;
+
+  return premiumToken;
+};
+/**
+ * creates a artist application token that is valid for 10 minutes only
+ * @function createArtistToken
+ * @returns {string} - artist reset token
+ */
+
+userSchema.methods.createArtistToken = function () {
+  const applicationToken = crypto.randomBytes(32).toString('hex');
+
+  this.artistApplicationToken = crypto
+    .createHash('sha256')
+    .update(applicationToken)
+    .digest('hex');
+
+  // the token to reset the password is valit only for 1 day
+  this.artistApplicationExpires = Date.now() + 24 * 60 * 60 * 1000;
+  return applicationToken;
+};
+/**
+ * creates a artist application token that is valid for 10 minutes only
+ * @function createPlayerToken
+ * @returns {string} -Trak reset token
+ */
+
+userSchema.methods.createPlayerToken = function () {
+  const playerToken = crypto.randomBytes(32).toString('hex');
+
+  this.playerToken = crypto
+    .createHash('sha256')
+    .update(playerToken)
+    .digest('hex');
+  // the token to reset the password is valit only for 20 minutes
+  this.playerTokenExpires = Date.now() + 20 * 60 * 1000;
+  return playerToken;
+};
+
+userSchema.plugin(mongoose_delete, {
+  overrideMethods: 'all'
+});
 
 const User = mongoose.model('User', userSchema);
 

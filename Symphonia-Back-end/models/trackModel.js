@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const Joi = require('@hapi/joi');
 
+/**
+ * @module Models.track
+ */
 const trackSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -17,7 +20,7 @@ const trackSchema = new mongoose.Schema({
     type: Number,
     validate: {
       // This only works on CREATE and SAVE
-      validator: function (el) {
+      validator: /* istanbul ignore next */ function (el) {
         return el > 3000;
       },
       message: 'Duration must be More than 3000 milleseconds!'
@@ -27,16 +30,13 @@ const trackSchema = new mongoose.Schema({
     {
       type: [mongoose.Schema.Types.ObjectId],
       ref: 'Category',
-      required: true,
-      validate: function (val) {
-        if (Array.isArray(val) && val.length === 0) { throw new Error('track should have a Category'); }
-      }
+      required: true
     }
   ],
   album: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Album'
-    // required: [true, "track should be in Album"]
+    ref: 'Album',
+    required: [true, 'track should be in Album']
   },
   artist: {
     type: mongoose.Schema.Types.ObjectId,
@@ -49,19 +49,31 @@ const trackSchema = new mongoose.Schema({
   usersCount: {
     type: Number
   },
-  trackImageUrl: String,
-  trackPath: String
+  trackPath: String,
+  explicit: {
+    type: Boolean,
+    default: false
+  },
+  previewUrl: {
+    type: String,
+    select: false
+  },
+  premium: {
+    type: Boolean,
+    defult: false
+  }
 });
-const Track = mongoose.model('Track', trackSchema);
-async function validateTrack (user) {
-  const schema = Joi.object({
-    name: Joi.string()
-      .min(2)
-      .max(255)
-      .required()
-  });
-  return schema.validateAsync(user);
-}
 
-exports.Track = Track;
-exports.validate = validateTrack;
+/**
+ * this function is to populate the track object with link to stream it
+ * @function getPreviewUrl
+ * @param {string} localhost - the base url for the project
+ * @returns {string}  the url for the track
+ */
+trackSchema.methods.getPreviewUrl = function (localhost) {
+  if (!localhost) return '';
+  else return `${localhost}api/v1/me/player/tracks/${this._id}`;
+};
+const Track = mongoose.model('Track', trackSchema);
+
+module.exports = Track;

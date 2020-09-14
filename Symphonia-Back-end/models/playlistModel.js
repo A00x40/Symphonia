@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const slugify = require('slugify');
+const mongoose_delete = require('mongoose-delete');
 
 const playlistSchema = new mongoose.Schema(
   {
@@ -14,7 +14,7 @@ const playlistSchema = new mongoose.Schema(
     name: {
       type: String,
       required: [true, 'please provide a name for your playlist'],
-      minlength: 2,
+      minlength: 1,
       maxlength: 255
     },
     owner: {
@@ -32,13 +32,20 @@ const playlistSchema = new mongoose.Schema(
         ref: 'Track'
       }
     ],
-    followers: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: 'User'
-    },
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ],
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category'
+    },
+    active: {
+      type: Boolean,
+      defult: true,
+      select: false
     }
   },
   {
@@ -46,17 +53,16 @@ const playlistSchema = new mongoose.Schema(
     toObject: { virtuals: true }
   }
 );
-// Note:
-// i didn't implemnent the uri field mostly itisn't needed
 
-// the type field is required
-/* playlistSchema.virtual('type').get(function() {
-  return 'playlist';
+playlistSchema.virtual('tracksCount').get(function () {
+  /* istanbul ignore else */
+  if (this.tracks) return this.tracks.length;
 });
-playlistSchema.virtual('href').get(function() {
-  const href = `url/${slugify(this.name, { lower: true })}`;
-  return href;
-}); */
+
+playlistSchema.plugin(mongoose_delete, {
+  deletedAt: true,
+  overrideMethods: 'all'
+});
 
 const Playlist = mongoose.model('Playlist', playlistSchema);
 module.exports = Playlist;

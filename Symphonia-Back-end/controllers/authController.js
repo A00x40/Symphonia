@@ -1,13 +1,21 @@
 const crypto = require('crypto');
 const { promisify } = require('util');
 const _ = require('lodash');
-const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const { User, validate } = require('../models/userModel');
 const catchAsync = require('../utils/catchAsync').threeArg;
 const AppError = require('../utils/appError');
 const Email = require('../utils/email');
+/**
+ * @module authController
+ */
 
+/**
+ * sends response to the user
+ * @param {object} user - user object retrieved from the database
+ * @param {number} statusCode - the status code of the response
+ * @param {object} res - the response object of express framework
+ */
 const createSendToken = (user, statusCode, res) => {
   const token = user.signToken();
   // Remove password and tracks from output
@@ -20,6 +28,7 @@ const createSendToken = (user, statusCode, res) => {
     user
   });
 };
+
 exports.signup = catchAsync(async (req, res, next) => {
   // validate with JOI as a first layer of validation
   await validate(req.body);
@@ -36,11 +45,33 @@ exports.signup = catchAsync(async (req, res, next) => {
       'gender',
       'type'
     ]),
+    last_login: Date.now(),
     passwordConfirm: req.body.password,
     imageUrl: `${url}/api/v1/images/users/default.png`
   });
-  console.log(newUser);
 
+  if (req.body.type == 'artist') {
+    const applicationToken = newUser.createArtistToken();
+    newUser.deleted = true;
+    await newUser.save({
+      validateBeforeSave: false
+    });
+    const activateUrl = `${url}/artist-activation/${applicationToken}`;
+    try {
+      await new Email(newUser, activateUrl).sendArtistApplication();
+      return res
+        .status(201)
+        .json({ status: 'success', message: 'token was sent to email' });
+    } catch (err) {
+      /* istanbul ignore next */
+      await User.findByIdAndRemove(newUser._id);
+      /* istanbul ignore next */
+      return next(
+        new AppError('There was an error sending the email. Try again later!'),
+        500
+      );
+    }
+  }
   await new Email(newUser, url).sendWelcome();
 
   createSendToken(newUser, 201, res);
@@ -79,67 +110,105 @@ exports.checkEmail = catchAsync(async (req, res, next) => {
   res.status(200).json({ exists: true, type: user.type });
 });
 exports.googleOauth = catchAsync(async (req, res, next) => {
+  /* istanbul ignore else */
   if (req.user.status === 201) {
     const url = `${req.protocol}://${req.get('host')}`;
     await new Email(req.user, url).sendWelcome();
   }
-  req.user.facebookId = undefined;
-  req.user.imageFacebookUrl = undefined;
-  createSendToken(req.user, req.user.status, res);
+  const user = await User.findOne({ googleId: req.user.googleId })
+    .select('+type')
+    .select('+googleId');
+  user.facebookId = undefined;
+  user.imageFacebookUrl = undefined;
+  user.password = undefined;
+  user.tracks = undefined;
+  user.ownedPlaylists = undefined;
+  user.followedAlbums = undefined;
+  user.followedTracks = undefined;
+  user.followedUsers = undefined;
+  user.followedUsers = undefined;
+  user.queue = undefined;
+  user.deleted = undefined;
+  user.__v = undefined;
+  createSendToken(user, req.user.status, res);
 });
 exports.facebookOauth = catchAsync(async (req, res, next) => {
+  /* istanbul ignore else */
   if (req.user.status === 201) {
     const url = `${req.protocol}://${req.get('host')}`;
     await new Email(req.user, url).sendWelcome();
   }
-  req.user.googleId = undefined;
-  req.user.imageGoogleUrl = undefined;
-  createSendToken(req.user, req.user.status, res);
+  const user = await User.findOne({ facebookId: req.user.facebookId })
+    .select('+type')
+    .select('+facebookId');
+  user.googleId = undefined;
+  user.imageGoogleUrl = undefined;
+  user.password = undefined;
+  user.tracks = undefined;
+  user.ownedPlaylists = undefined;
+  user.followedAlbums = undefined;
+  user.followedTracks = undefined;
+  user.followedUsers = undefined;
+  user.queue = undefined;
+  user.deleted = undefined;
+  user.__v = undefined;
+  createSendToken(user, req.user.status, res);
 });
-// this will be handeled by making the website protocol https://localhost:3000 not http://localhost:3000
-exports.googleUnlink = catchAsync(async (req, res, next) => {});
-exports.facebookUnlink = catchAsync(async (req, res, next) => {});
 
-exports.protect = catchAsync(async (req, res, next) => {
-  // 1) Getting token and check of it's there
-  let token;
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
-    token = req.headers.authorization.split(' ')[1];
-  }
+exports.protect = blocking => {
+  return catchAsync(async (req, res, next) => {
+    // 1) Getting token and check of it's there
+    let token;
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer')
+    ) {
+      token = req.headers.authorization.split(' ')[1];
+    }
 
-  if (!token) {
-    return next(
-      new AppError('You are not logged in! Please log in to get access.', 401)
+    if (!token) {
+      if (blocking)
+        return next(
+          new AppError(
+            'You are not logged in! Please log in to get access.',
+            401
+          )
+        );
+      else return next();
+    }
+    // 2) Verification token
+    const decoded = await promisify(jwt.verify)(
+      token,
+      process.env.JWT_SECRET_KEY
     );
-  }
-  // 2) Verification token
-  const decoded = await promisify(jwt.verify)(
-    token,
-    process.env.JWT_SECRET_KEY
-  );
-  // 3) Check if user still exists
-  const currentUser = await User.findById(decoded.id);
-  if (!currentUser) {
-    return next(
-      new AppError(
-        'The user belonging to this token does no longer exist.',
-        401
-      )
-    );
-  }
-  // 4) Check if user changed password after the token was issued
-  if (currentUser.changedPasswordAfter(decoded.iat)) {
-    return next(
-      new AppError('User recently changed password! Please log in again.', 401)
-    );
-  }
-  // GRANT ACCESS TO PROTECTED ROUTE
-  req.user = currentUser;
-  next();
-});
+    // 3) Check if user still exists
+    const currentUser = await User.findById(decoded.id);
+    if (!currentUser) {
+      return next(
+        new AppError(
+          'The user belonging to this token does no longer exist.',
+          401
+        )
+      );
+    }
+    // 4) Check if user changed password after the token was issued
+    if (currentUser.changedPasswordAfter(decoded.iat)) {
+      return next(
+        new AppError(
+          'User recently changed password! Please log in again.',
+          401
+        )
+      );
+    }
+    if (Date.now() > currentUser.preiumExpires) {
+      currentUser.premium = false;
+      currentUser.save({ validateBeforeSave: false });
+    }
+    // GRANT ACCESS TO PROTECTED ROUTE
+    req.user = currentUser;
+    next();
+  });
+};
 exports.restrictTo = (...types) => {
   return (req, res, next) => {
     if (!types.includes(req.user.type)) {
@@ -169,7 +238,6 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
     const resetURL =
       `${req.protocol}://${req.hostname}` +
       `/password-reset/change/${resetToken}`;
-    __logger.info(resetURL);
     await new Email(user, resetURL).sendPasswordReset();
     res.status(200).json({
       status: 'success',
@@ -229,4 +297,30 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   // User.findByIdAndUpdate will NOT work as intended!
   // 4) Log user in, send JWT
   createSendToken(user, 200, res);
+});
+
+exports.activateArtist = catchAsync(async (req, res, next) => {
+  // get the artist from the database based on the token
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
+
+  const user = await User.findOneDeleted({
+    artistApplicationToken: hashedToken,
+    artistApplicationExpires: {
+      $gt: Date.now()
+    }
+  });
+  if (!user) {
+    return next(new AppError('Token is invalid or has expired', 400));
+  }
+  user.deleted = undefined;
+  user.artistApplicationToken = undefined;
+  user.artistApplicationExpires = undefined;
+  user.premium = true;
+  await user.save({
+    validateBeforeSave: false
+  });
+  createSendToken(user, 201, res);
 });

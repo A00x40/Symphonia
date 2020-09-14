@@ -1,3 +1,5 @@
+// Acknowledgments: code adapted from https://github.com/jonasschmedtmann/complete-node-bootcamp
+
 const catchAsync = require('./../utils/catchAsync').threeArg;
 const AppError = require('./../utils/appError');
 const APIFeatures = require('./../utils/apiFeatures');
@@ -65,12 +67,7 @@ exports.getMany = (Model, popOptions) =>
 
 exports.getAll = Model =>
   catchAsync(async (req, res, next) => {
-    const features = new APIFeatures(Model.find({}), req.query)
-      .filter()
-      .sort()
-      .limitFields()
-      .paginate();
-    // const doc = await features.query.explain();
+    const features = new APIFeatures(Model.find({}), req.query);
     const doc = await features.query;
 
     // SEND RESPONSE

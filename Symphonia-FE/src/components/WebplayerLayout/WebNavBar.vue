@@ -33,6 +33,8 @@
       color="black"
       class="tf ml-3 py-0"
       v-show="showSearch"
+      v-model="search"
+      @input="request()"
     ></v-text-field>
     <!--The tabs of the the library-->
     <div
@@ -100,12 +102,13 @@
       class="upgarde white--text px-8 py-2 hidden-sm-and-down"
       id="upgarde"
       v-show="showUpgrade"
-      v-if="isLoggedIn()"
+      v-if="isLoggedIn() && !isPremium()"
       to="/premium/?checkout=false"
     >
       UPGRADE
     </v-btn>
-
+    <!-- notification menu for history list-->
+    <notification-historylist v-if="isLoggedIn()"></notification-historylist>
     <!--A menu of account, upgarde to premium ,logout -->
     <v-menu offset-y v-if="isLoggedIn()">
       <template v-slot:activator="{ on }">
@@ -143,6 +146,7 @@
           class="hidden-md-and-up"
           id="upgardepremium"
           v-show="showUpgrade"
+          v-if="isLoggedIn() && !isPremium()"
           to="/premium/?checkout=false"
         >
           <v-list-item-title>Upgarde to premium</v-list-item-title>
@@ -178,8 +182,11 @@
 </template>
 
 <script>
-import isLoggedIn from "../../mixins/userService";
-import getusername from "../../mixins/userService";
+import isLoggedIn from "../../mixins/userService/isLoggedIn";
+import getusername from "../../mixins/userService/getusername";
+import logOut from "../../mixins/userService/logOut";
+import NotificationHistorylist from "../Notifications/NotificationHistorylist";
+import isPremium from "../../mixins/userService/isPremium";
 /**
  * @displayName Webplayer Navigation Bar
  * @example [none]
@@ -195,12 +202,17 @@ export default {
       selectedItem: "More..",
       moreMenu: ["More..", "Artists", "Albums"],
       scrollPosition: null,
-      scrolled: null
+      scrolled: null,
+      search: ""
     };
+  },
+  components: {
+    NotificationHistorylist
   },
   created() {
     this.itemChosen(this.$route.name);
     this.handleTabs(this.$route.name);
+    this.search = this.$route.params.name;
   },
   watch: {
     $route: function() {
@@ -233,7 +245,7 @@ export default {
      * @param {string} item route name
      */
     handleTabs: function(item) {
-      if (item === "search") {
+      if (item === "search" || item === "searchItem" || item == "searchNone") {
         this.showSearch = true;
         this.showCollection = false;
         this.showUpgrade = false;
@@ -245,10 +257,16 @@ export default {
         this.showSearch = false;
         this.showCollection = true;
         this.showUpgrade = false;
+        this.search = "";
+      } else if (item === "searchSeeAll") {
+        this.showSearch = false;
+        this.showCollection = false;
+        this.showUpgrade = false;
       } else {
         this.showCollection = false;
         this.showSearch = false;
         this.showUpgrade = true;
+        this.search = "";
       }
     },
     /**
@@ -297,18 +315,30 @@ export default {
     logOutAndRerender() {
       this.logOut();
       this.$forceUpdate();
-      this.$root.$emit("updateContent"); //like this
+      this.$store.commit("category/changeLogoutUpdate");
+    },
+    /**
+     * Gets called when the user input text for search
+     * @public This is a public method
+     * @param {none}
+     */
+    request() {
+      if (this.search && this.showSearch) {
+        this.$store.dispatch("searchFor", encodeURI(this.search));
+        this.$router.replace(`/webhome/search/${encodeURI(this.search)}`);
+      }
     }
   },
   mounted() {
     window.addEventListener("scroll", this.updateScroll);
     this.handleTransparency();
+    this.request();
   },
   //Remove the listerner when the component is destroied
-  destroy() {
+  beforeDestroy() {
     window.removeEventListener("scroll", this.updateScroll);
   },
-  mixins: [isLoggedIn, getusername]
+  mixins: [isLoggedIn, getusername, logOut, isPremium]
 };
 </script>
 

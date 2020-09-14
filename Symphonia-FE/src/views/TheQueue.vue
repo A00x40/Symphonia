@@ -1,7 +1,7 @@
 <template>
   <v-container class="pt-0">
     <h1 style="font-size: 28px;">Play Queue</h1>
-    <v-row justify="center">
+    <v-row justify="center" v-if="isCurTrkReady">
       <!--Display the Now player -->
       <v-col lg="12" sm="12" md="12">
         <h2 style="font-size: 18px;">Now Playing</h2>
@@ -9,18 +9,18 @@
         <v-divider class="hidden-lg-and-up" sm-12 color="#424242"></v-divider>
         <v-list color="transparent">
           <!--Nesting the song component-->
-          <song
-            :playing="true"
-            songName="Changes"
-            artistName="2PAC"
-            albumName="from creed to grave"
-            :duration="80000"
+          <SongItem
+            :songName="curTrkName"
+            :artistName="curTrkArtistName"
+            :albumName="albumName"
+            :songDuration="trackTotalDurationMs"
+            :ID="curTrkId"
           />
         </v-list>
       </v-col>
     </v-row>
 
-    <v-row justify="center">
+    <v-row justify="center" v-if="isCurTrkReady">
       <!--Display the Now player -->
       <v-col lg="12" sm="12" md="12">
         <h2 style="font-size: 18px;">Next Up</h2>
@@ -28,14 +28,14 @@
         <v-divider class="hidden-lg-and-up" sm-12 color="#424242"></v-divider>
         <v-list color="transparent">
           <!--Nesting the song component-->
-          <song
-            v-for="track in tracks"
+          <SongItem
+            v-for="track in queueNextTracks"
             :key="track.name"
-            :disabled="true"
+            :isNextInQueue="true"
             :songName="track.name"
-            :artistName="track.artists[0].name"
-            :albumName="track.album.name"
-            :duration="track.duration_ms"
+            :artistName="track.artistName"
+            :songDuration="track.durationMs"
+            :albumName="track.trackAlbumName"
           />
         </v-list>
       </v-col>
@@ -44,44 +44,52 @@
 </template>
 
 <script>
-import Song from "../components/general/Song";
-import { mapState, mapActions, mapMutations, mapGetters } from "vuex";
-import getDeviceSize from "../mixins/getDeviceSize";
-/**
- * @displayName Liked Songs
- * @example [none]
- */
+import SongItem from "../components/general/SongItem";
+import { mapState, mapActions, mapMutations } from "vuex";
+import getuserToken from "../mixins/userService/getUserToken";
+
 export default {
+  name: "TheQueue",
+
   components: {
-    Song
+    SongItem
   },
+
   data: function() {
     return {
       hover: false,
-      iconClick: false
+      loading: true,
+      token: undefined
     };
   },
-  
+
   methods: {
-    ...mapMutations("playlist", ["setIsQueueOpened"]),
-    ...mapActions("category", ["getTracks"])
+    ...mapActions("track", ["updateQueueTracksInfo"]),
+    ...mapMutations("track", ["setIsQueueOpened"])
   },
+
+  computed: {
+    ...mapState({
+      curTrkName: state => state.track.trackName,
+      curTrkArtistName: state => state.track.trackArtistName,
+      curTrkId: state => state.track.trackId,
+      queueNextTracks: state => state.track.queueNextTracks,
+      trackTotalDurationMs: state => state.track.trackTotalDurationMs,
+      albumName: state => state.track.trackAlbumName,
+      isCurTrkReady: state => state.track.isCurTrkReady
+    })
+  },
+
   mounted: function() {
-    this.getTracks();
     this.setIsQueueOpened(true);
+
+    this.token = "Bearer " + this.getuserToken();
   },
-  computed: mapState({
-    ...mapGetters("playlist", ["isQueueOpened"]),
 
-    tracks: state => state.category.tracks
-  }),
-
-  mixins: [getDeviceSize],
-
-  
   beforeDestroy: function() {
     this.setIsQueueOpened(false);
-  }
+  },
+  mixins: [getuserToken]
 };
 </script>
 

@@ -6,12 +6,8 @@
 
 <script>
 export default {
-  name: "App",
-  data: () => ({}),
-  // created(){
-  //   localStorage.clear()
-  // }
-  };
+  name: "App"
+};
 </script>
 
 <style scoped></style>

@@ -4,10 +4,10 @@
     <v-app-bar
       flat
       app
-      color="rgba(0, 0, 0, 0.6)"
+      :color="navigationBarColor"
       height="80"
       class="hidden-sm-and-down"
-      id="nav"
+      ref="navBar"
     >
       <v-toolbar
         flat
@@ -19,14 +19,14 @@
         }"
       >
         <router-link to="/" style="text-decoration: none;">
-          <v-img
-            src="/s11.png"
-            max-width="50px"
-            style="float: left;"
-          ></v-img>
-          <h1 style="display: inline;" display-4 class="black--text">
-            Symphonia
-          </h1>
+          <v-row>
+            <v-img src="/s11.png" max-width="50px" style="float: left;"></v-img>
+            <v-col align="center" class="px-0">
+              <h1 style="display: inline;" display-4 class="white--text">
+                Symphonia
+              </h1>
+            </v-col>
+          </v-row>
         </router-link>
 
         <v-toolbar
@@ -36,7 +36,8 @@
           style="padding-right:0px;"
         >
           <router-link
-            to="/premium/?checkout=false"
+            v-if="!isPremium()"
+            to="/premium"
             class="toolbar-link-1"
             v-bind:class="{ 'blue-hover': isLoggedIn() }"
             >Premium</router-link
@@ -80,10 +81,7 @@
                 class="toolbar-link-1 blue-hover"
               >
                 <v-avatar width="40" height="40">
-                  <img
-                    src="/profile.jpg"
-                    alt="profile pic"
-                  />
+                  <img :src="currentUserImageUrl" alt="profile pic" />
                 </v-avatar>
 
                 <span style="text-transform: none; padding-left:15px;"
@@ -140,10 +138,7 @@
           <v-col cols="1">
             <router-link to="/account">
               <v-avatar v-if="isLoggedIn()" width="34" height="34">
-                <img
-                  src="/profile.jpg"
-                  alt="profile pic"
-                />
+                <img :src="currentUserImageUrl" alt="profile pic" />
               </v-avatar>
             </router-link>
           </v-col>
@@ -174,6 +169,7 @@
       <ul style="padding:0px;">
         <li>
           <router-link
+            v-if="!isPremium()"
             to="/premium/?checkout=false"
             class="toolbar-link-1 small-toolbar-btn-1"
             >Premium</router-link
@@ -226,12 +222,7 @@
         class="small-symphonia-icon"
         style="text-decoration: none;"
       >
-        <v-img
-          src="/s11.png"
-          max-width="50px"
-          style="float: left;"
-        >
-        </v-img>
+        <v-img src="/s11.png" max-width="50px" style="float: left;"> </v-img>
         <h1 style="display: inline;" display-4 class="white--text">
           Symphonia
         </h1>
@@ -241,8 +232,12 @@
 </template>
 
 <script>
-import isLoggedIn from "../../mixins/userService";
+import isLoggedIn from "../../mixins/userService/isLoggedIn";
+import isPremium from "../../mixins/userService/isPremium";
 import getDeviceSize from "../../mixins/getDeviceSize";
+import getimageUrl from "../../mixins/userService/getimageUrl";
+import logOut from "../../mixins/userService/logOut";
+import { mapState } from "vuex";
 
 /**
  * The homepage navigation bar.
@@ -252,12 +247,23 @@ import getDeviceSize from "../../mixins/getDeviceSize";
 export default {
   name: "TheHomepageNavBar",
 
-  data() {
-    return {
-      drawer: false
-    };
+  computed: {
+    ...mapState({
+      homepageInstance: state => state.homepage.homepageInstance,
+      navigationBarColor: state => state.homepage.navigationBarColor
+    })
   },
 
+  data() {
+    return {
+      drawer: false,
+      //The current user profile image
+      currentUserImageUrl: ""
+    };
+  },
+  created() {
+    this.currentUserImageUrl = this.getimageUrl();
+  },
   methods: {
     /**
      * Gets called when the user logs out
@@ -267,11 +273,12 @@ export default {
     logOutAndRerender() {
       this.logOut();
       this.$forceUpdate();
-      this.$root.$emit("forceUpdateContent"); //like this
+
+      this.homepageInstance.$forceUpdate();
     }
   },
 
-  mixins: [isLoggedIn, getDeviceSize]
+  mixins: [isLoggedIn, getimageUrl, getDeviceSize, logOut, isPremium]
 };
 </script>
 

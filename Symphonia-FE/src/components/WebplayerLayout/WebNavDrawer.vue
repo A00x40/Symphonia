@@ -32,7 +32,7 @@
         :key="item.text"
         router
         :to="item.route"
-        :id="item.text"
+        :id="item.id"
         class="listItem mainMenu"
         active-class="active"
       >
@@ -40,6 +40,23 @@
 
         <v-list-item-title class="draweritem white--text">
           {{ item.text }}
+        </v-list-item-title>
+      </v-list-item>
+
+      <!-- Adding Symphonia Artist Button -->
+
+      <v-list-item
+        v-if="getuserType() == 'artist'"
+        router
+        :to="`/SymphoniaArtist/${getuserID()}`"
+        id="GotoSymphoniaArtist"
+        class="listItem mainMenu"
+        active-class="active"
+      >
+        <v-icon class="mr-2">mdi-account-music</v-icon>
+
+        <v-list-item-title class="draweritem white--text">
+          Go to Symphonia Artist
         </v-list-item-title>
       </v-list-item>
 
@@ -53,14 +70,32 @@
       </v-list-item-subtitle>
 
       <!--Nesting the popup-->
-      <create-playlist v-if="loggedIn"></create-playlist>
+      <!-- <create-playlist v-if="loggedIn"></create-playlist> -->
+      <v-list-item
+        class="listItem"
+        @click="changeCreateModel"
+        inactive
+        v-if="loggedIn"
+      >
+        <v-btn
+          fab
+          x-small
+          color="white"
+          id="openPopup"
+          style="border-radius: 0px; margin-right: 7%"
+        >
+          <v-icon color="black">mdi-plus</v-icon>
+        </v-btn>
+        <v-list-item-title v-show="$vuetify.breakpoint.lgAndUp"
+          >Create Playlist</v-list-item-title
+        >
+      </v-list-item>
 
       <!--Liked Songs button-->
       <v-list-item
         to="/webhome/collection/tracks"
         class="listItem"
         active-class="active"
-        tag="p"
         v-if="loggedIn"
         id="likedItem"
       >
@@ -80,6 +115,8 @@
           v-for="playlist in playlists"
           :key="playlist.id"
           class="listItem"
+          :to="'/webhome/playlist/' + playlist.id"
+          @contextmenu.prevent="menuClick($event, playlist.id)"
         >
           <v-list-item-title
             class="draweritem white--text"
@@ -94,50 +131,75 @@
 </template>
 
 <script>
-import CreatePlaylist from "../CreatePlaylist";
-import { mapState, mapActions } from "vuex";
+import getuserToken from "../../mixins/userService/getUserToken";
+import getuserType from "../../mixins/userService/getuserType";
+import getuserID from "../../mixins/userService/getuserID";
 /**
  * @displayName Webplayer Navigation Drawer
  * @example [none]
  */
 export default {
   props: {
-    loggedIn: Boolean
-  },
-  components: {
-    CreatePlaylist
+    loggedIn: Boolean,
+    contextMenu: {
+      event: null,
+      type: null,
+      id: null
+    }
   },
   methods: {
-    ...mapActions("playlist", ["getPlaylists"])
+    /**
+     * Gets called when the user clicks on the create playlist button to open the pop up
+     * @public This is a public method
+     * @param {none}
+     */
+    changeCreateModel: function() {
+      this.$store.commit("playlist/changeCreateModel");
+    },
+    /**
+     * Function to set the right click menu data
+     * @public This is a public method
+     * @param {Event} event the event type
+     */
+    menuClick(event, playlistID) {
+      this.$props.contextMenu.event = event;
+      this.$props.contextMenu.id = playlistID;
+      this.$props.contextMenu.type = "playlist";
+    }
   },
   mounted() {
-    this.getPlaylists();
+    this.$store.dispatch("playlist/getPlaylists", this.getuserToken());
   },
-  computed: mapState({
-    //the playlists from the get request
-    playlists: state => state.playlist.likedPlaylists
-  }),
+  computed: {
+    playlists: function() {
+      return this.$store.state.playlist.userSavedPlaylists;
+    }
+  },
   data: function() {
     return {
       items: [
         {
           icon: "mdi-home-variant",
           text: "Home",
+          id: "Home",
           route: "/webhome/home"
         },
         {
           icon: "mdi-magnify",
           text: "Search",
+          id: "Search",
           route: "/webhome/search"
         },
         {
           icon: "mdi-bookshelf",
           text: "Your Library",
+          id: "YourLibrary",
           route: "/webhome/collection"
         }
       ]
     };
-  }
+  },
+  mixins: [getuserToken, getuserType, getuserID]
 };
 </script>
 
@@ -154,6 +216,7 @@ export default {
 
 .listItem:hover {
   opacity: 1;
+  cursor: pointer;
 }
 
 a {

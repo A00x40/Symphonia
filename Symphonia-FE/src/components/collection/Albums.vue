@@ -1,68 +1,45 @@
 <template>
   <v-content class="pa-0 mr-5">
     <h1>Albums</h1>
-    <CardGrid :cardItems="cardItems" v-on:order="menuOrder" />
+    <CardGrid :cardItems="cardItems" :contextMenu="contextMenu" />
   </v-content>
 </template>
 
 <script>
 import { mapGetters, mapActions } from "vuex";
 import CardGrid from "../general/CardGrid";
-
+import getuserToken from "../../mixins/userService/getUserToken";
+/**
+ * @displayName Library saved albums
+ * @example [none]
+ */
 export default {
   name: "Albums",
+  props: ["contextMenu"],
   components: {
     CardGrid
   },
   data() {
     return {
-      contextMenuChoice: null,
-      contextMenuCardIndex: null,
       cardItems: {
-        // Custom context menu data section
-        // menuList: items of the menu - disabledMenu: flag to disable menu on outside card click - showMenu: menu v-model
-        menuList: [
-          { title: "Start Radio" },
-          { title: "Remove from your Library" },
-          { title: "Add to Playlist" },
-          { title: "Copy Album link" }
-        ],
-        showMenu: false,
-        // Albums Cards data section
-        // hoveredCardIndex: index of the hovered card, used to make the play button of the hovered album visable - items: album details
-        hoveredCardIndex: null,
         items: null
       }
     };
   },
-  methods:{
-    ...mapActions(["getAlbums", "deleteAlbums"]),
-    menuOrder(menuItem, cardIndex){
-      this.contextMenuChoice = menuItem;
-      this.contextMenuCardIndex = cardIndex;
-    },
+  mixins: [getuserToken],
+  methods: {
+    ...mapActions("album", ["getAlbums", "deleteAlbums"])
   },
-  created(){
-    this.getAlbums();
+  created() {
+    this.getAlbums({ token: this.getuserToken() });
   },
 
-  computed: mapGetters(['allAlbums']),
+  computed: mapGetters("album", ["allAlbums"]),
 
   watch: {
-    contextMenuChoice: function() {
-      if (this.contextMenuChoice === null)
-        return;
-      console.log(this.contextMenuChoice);
-      console.log(this.contextMenuCardIndex);
-      if(this.contextMenuChoice === "Remove from your Library")
-      {
-          this.deleteAlbums([this.contextMenuCardIndex]);
-      }
-      this.contextMenuChoice = null
-      },
-      allAlbums(newValue){
-        this.cardItems.items = newValue
-      }
-  },
+    allAlbums(newValue) {
+      this.cardItems.items = newValue;
+    }
+  }
 };
 </script>

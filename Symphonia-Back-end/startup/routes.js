@@ -5,27 +5,25 @@ const meRouter = require('../routes/meRouter');
 const albumRouter = require('../routes/albumRouter');
 const browseRouter = require('../routes/browseRouter');
 const recommendationRouter = require('../routes/recommendationRouter');
-// const browseRouter = require('../routes/browseRouter');
-// const playlistsRouter = require('../routes/playlistsRouter');
 const artistRouter = require('../routes/artistRouter');
+const searchRouter = require('../routes/searchRouter');
 const playlistRouter = require('./../routes/playlistRouter');
 const AppError = require('../utils/appError');
 const globalErrorHandler = require('../controllers/errorController');
 const staticImages = require('../routes/images');
 const bodyParser = require('body-parser');
-
+const meRouter_v2 = require('../routes_v2/meRouter');
 module.exports = function (app) {
-  app.use(express.json());
+  app.set('trust proxy', 'loopback'); // for deployment to get the host in the code
+  app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
   app.use(
-    express.urlencoded({
-      extended: false
+    bodyParser.json({
+      verify: (req, res, buf) => {
+        req.rawBody = buf;
+      },
+      limit: '50mb'
     })
   );
-
-  app.set('trust proxy', 'loopback'); // for deployment to get the host in the code
-  app.use(bodyParser.urlencoded({ extended: false }));
-
-  app.use('/api/v1/recommendations', recommendationRouter);
   // serve static
   app.use('/api/v1/images', staticImages);
   app.use(
@@ -41,12 +39,11 @@ module.exports = function (app) {
   app.use('/api/v1/browse', browseRouter);
   app.use('/api/v1/playlists', playlistRouter);
   app.use('/api/v1/artists', artistRouter);
+  app.use('/api/v1/search', searchRouter);
+  app.use('/api/v1/recommendations', recommendationRouter);
 
-  // app.use('/api/v1/browse', browseRouter);
-  // app.use('api/v1/me', me1Router);
-  // app.use('/api/v1/playlists', playlistsRouter);
-
-  // app.use('/v1', v1Router);
+  /* istanbul ignore next */
+  // if any link is visited and not mentioned above will go to that next middleware
   app.all('*', (req, res, next) => {
     next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
   });

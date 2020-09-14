@@ -2,301 +2,245 @@
 import axios from "axios";
 import playlistModule from "./playlist.js";
 
-const token = localStorage.getItem("userToken");
-
 const state = {
-  tracks: [],
+  logoutUpdate: false,
+  categories: [],
   recentlyPlayed: {
     categoryName: "Recently Played",
     showSeeAll: false,
     list: {
-      menuList: [
-        { title: "Start Radio" },
-        { title: "Save to Your Library" },
-        { title: "Copy Playlist Link" }
-      ],
-      showMenu: false,
-      hoveredCardIndex: null,
       items: []
-    },
-    style: null
+    }
   },
-  heavyRoatation: {
-    categoryName: "Your heavy rotation",
+  newReleases: {
+    categoryName: "Popular new releases",
     showSeeAll: false,
     list: {
-      menuList: [
-        { title: "Start Radio" },
-        { title: "Save to Your Library" },
-        { title: "Copy Playlist Link" }
-      ],
-      showMenu: false,
-      hoveredCardIndex: null,
       items: []
-    },
-    style: null
+    }
   },
   likedPlaylists: {
     categoryName: "Your playlists",
     showSeeAll: false,
     list: {
-      menuList: [
-        { title: "Start Radio" },
-        { title: "Save to Your Library" },
-        { title: "Copy Playlist Link" }
-      ],
-      showMenu: false,
-      hoveredCardIndex: null,
       items: []
-    },
-    style: null
+    }
   },
-  popularPlaylists: {
-    categoryName: "Popular playlists",
-    showSeeAll: true,
-    list: {
-      menuList: [
-        { title: "Start Radio" },
-        { title: "Save to Your Library" },
-        { title: "Copy Playlist Link" }
-      ],
-      showMenu: false,
-      hoveredCardIndex: null,
-      items: []
-    },
-    style: null
-  },
-  popularArtists: {
-    categoryName: "Popular Artists",
-    showSeeAll: true,
-    list: {
-      menuList: [
-        { title: "Start Radio" },
-        { title: "Follow" },
-        { title: "Copy Artist Link" }
-      ],
-      showMenu: false,
-      hoveredCardIndex: null,
-      items: []
-    },
-    style: "artist"
-  },
-  popCategory: {
-    categoryName: "Pop",
-    showSeeAll: true,
-    list: {
-      menuList: [
-        { title: "Start Radio" },
-        { title: "Save to Your Library" },
-        { title: "Copy Playlist Link" }
-      ],
-      showMenu: false,
-      hoveredCardIndex: null,
-      items: []
-    },
-    style: null
-  },
-  folkCategory: {
-    categoryName: "Folk",
-    showSeeAll: true,
-    list: {
-      menuList: [
-        { title: "Start Radio" },
-        { title: "Save to Your Library" },
-        { title: "Copy Playlist Link" }
-      ],
-      showMenu: false,
-      hoveredCardIndex: null,
-      items: []
-    },
-    style: null
-  },
-  rockCategory: {
-    categoryName: "Rock",
-    showSeeAll: true,
-    list: {
-      menuList: [
-        { title: "Start Radio" },
-        { title: "Save to Your Library" },
-        { title: "Copy Playlist Link" }
-      ],
-      showMenu: false,
-      hoveredCardIndex: null,
-      items: []
-    },
-    style: null
-  },
-  jazzCategory: {
-    categoryName: "Jazz",
-    showSeeAll: true,
-    list: {
-      menuList: [
-        { title: "Start Radio" },
-        { title: "Save to Your Library" },
-        { title: "Copy Playlist Link" }
-      ],
-      showMenu: false,
-      hoveredCardIndex: null,
-      items: []
-    },
-    style: null
-  },
-  categories: []
+  categoryNameHolder: "",
+  categoryIDHolder: "",
+  historyResponse: [],
+  newReleasesAlbums: [],
+  genresList: [],
+  pushAgain: true,
+  singleCategory: null,
+  savedGenres: [],
+  isLoading: false
 };
 
 const mutations = {
-  load_popPlaylists(state, payload) {
-    state.popCategory.list.items = payload;
-    state.categories.push(state.popCategory);
-  },
-  load_folkPlaylists(state, payload) {
-    state.folkCategory.list.items = payload;
-    state.categories.push(state.folkCategory);
-  },
-  load_rockPlaylists(state, payload) {
-    state.rockCategory.list.items = payload;
-    state.categories.push(state.rockCategory);
-  },
-  load_jazzPlaylists(state, payload) {
-    state.jazzCategory.list.items = payload;
-    state.categories.push(state.jazzCategory);
-  },
   emptyArray(state) {
     state.categories = [];
   },
-  load_popularPlaylists(state, payload) {
+  changeLogoutUpdate(state) {
+    state.logoutUpdate = !state.logoutUpdate;
+  },
+  togglePushAgain(state) {
+    state.pushAgain = !state.pushAgain;
+  },
+  setGenresList(state, genresList) {
+    state.genresList = genresList;
+  },
+  setSingleCategoryData(state, payload) {
+    let singleCategory = {
+      categoryName: "",
+      categoryID: "",
+      showSeeAll: true,
+      list: {
+        items: []
+      }
+    };
+    singleCategory.categoryName = state.categoryNameHolder;
+    singleCategory.categoryID = state.categoryIDHolder;
+    singleCategory.list.items = payload;
+    state.singleCategory = singleCategory;
+    state.categories.push(singleCategory);
+    state.isLoading = false;
+  },
+  setGenreName(state, payload) {
+    state.categoryNameHolder = payload.name;
+    state.categoryIDHolder = payload.id;
+  },
+  setHistory(state, payload) {
+    state.historyResponse = payload;
+  },
+  setRecentlyPlayed(state) {
+    let list = state.historyResponse;
     let newList = [];
-    payload.forEach(element => {
+    list.forEach(element => {
       var k = {
-        name: element.name,
-        image: element.images[0].url,
-        description: element.description,
-        id: element.id,
-        url: "url to be added"
+        name: element.contextName,
+        id: element.contextId,
+        image: element.contextImage,
+        type: element.contextType
       };
       newList.push(k);
     });
-    state.popularPlaylists.list.items = newList;
-    state.categories.push(state.popularPlaylists);
+    if (newList.length != 0) {
+      state.recentlyPlayed.list.items = newList;
+      state.categories.push(state.recentlyPlayed);
+    }
   },
-  load_popularArtists(state, payload) {
-    let newList = [];
+  setUserPlaylists(state) {
+    state.likedPlaylists.list.items = playlistModule.state.userSavedPlaylists;
+    if (state.likedPlaylists.list.items.length != 0)
+      state.categories.push(state.likedPlaylists);
+  },
+  setNewReleases(state, newReleasesList) {
+    state.newReleases.list.items = newReleasesList;
+    state.categories.push(state.newReleases);
+  },
+  savedGenres(state, payload) {
+    state.savedGenres = [];
     payload.forEach(element => {
-      var k = {
-        name: element.name,
-        image: element.images[0].url,
-        description: element.description,
-        id: element.id,
-        url: "url to be added"
-      };
-      newList.push(k);
+      state.savedGenres.push(element);
     });
-    state.popularArtists.list.items = newList;
-    state.categories.push(state.popularArtists);
   },
-  load_personalSections(state) {
-    state.recentlyPlayed.list.items = playlistModule.state.likedPlaylists;
-    state.categories.push(state.recentlyPlayed);
-    state.heavyRoatation.list.items = playlistModule.state.likedPlaylists;
-    state.categories.push(state.heavyRoatation);
-    state.likedPlaylists.list.items = playlistModule.state.likedPlaylists;
-    state.categories.push(state.likedPlaylists);
-  },
-  load_tracks(state, list) {
-    state.tracks = list;
+  setLoading() {
+    state.isLoading = true;
   }
 };
 
 const actions = {
-  getPopularPlaylists({ commit }) {
-    axios
-      .get("/v1/me/popularPlaylists")
-      .then(response => {
-        let playlists = response.data;
-
-        commit("load_popularPlaylists", playlists);
+  //-------------------------------------------------
+  //         Get a single category\genre
+  //-------------------------------------------------
+  async getCategory({ commit }, categoryID) {
+    await axios
+      .get("v1/browse/categories/" + categoryID)
+      .then(async response => {
+        commit("setGenreName", response.data);
       })
       .catch(error => {
         console.log("axios caught an error");
         console.log(error);
       });
   },
-  getPopularArtists({ commit }) {
-    axios
-      .get("/v1/me/popularArtists")
-      .then(response => {
-        let artists = response.data;
-        commit("load_popularArtists", artists);
-      })
-      .catch(error => {
-        console.log("axios caught an error");
-        console.log(error);
-      });
-  },
-  getGenrePlaylists({ commit }, category_id) {
-    commit("emptyArray");
-    axios
-      .get("v1/browse/categories/" + category_id + "/playlists")
-      .then(response => {
-        let genreList = response.data;
+  //-------------------------------------------------
+  //         Get a category's playlist
+  //-------------------------------------------------
+  async getGenrePlaylists({ commit, dispatch }, categoryID) {
+    commit("setLoading");
+    await dispatch("getCategory", categoryID);
+    await axios
+      .get("v1/browse/categories/" + categoryID + "/playlists")
+      .then(async response => {
+        let genreList = response.data.playlists.items;
         let newList = [];
-        genreList.forEach(element => {
+        for (let index = 0; index < genreList.length; index++) {
           var k = {
-            name: element.name,
-            image: element.images[0].url,
-            description: element.description,
-            id: element.id,
-            url: "url to be added"
+            name: genreList[index].name,
+            image: genreList[index].images[0],
+            description: genreList[index].description,
+            id: genreList[index].id,
+            type: "playlist"
           };
           newList.push(k);
-        });
-        if (category_id == "pop") commit("load_popPlaylists", newList);
-        else if (category_id == "folk") commit("load_folkPlaylists", newList);
-        else if (category_id == "rock") commit("load_rockPlaylists", newList);
-        else commit("load_jazzPlaylists", newList);
+        }
+        await commit("setSingleCategoryData", newList);
       })
       .catch(error => {
         console.log("axios caught an error");
         console.log(error);
       });
   },
-  loadGenres({ dispatch }) {
-    let genres_ids = ["pop", "folk", "rock", "jazz"];
-    genres_ids.forEach(element => {
-      dispatch("getGenrePlaylists", element);
-    });
+  //-------------------------------------------------
+  //         Get a list of categories
+  //-------------------------------------------------
+  async loadGenres({ state, commit, dispatch }) {
+    if (state.pushAgain) {
+      commit("togglePushAgain");
+      commit("emptyArray");
+      let genresIDs = [];
+      axios
+        .get("/v1/browse/categories")
+        .then(async response => {
+          let genres = response.data.categories.items;
+          for (let i = 0; i < genres.length; i++) {
+            var id = genres[i].id;
+            genresIDs.push(id);
+          }
+          commit("savedGenres", response.data.categories.items);
+          commit("setGenresList", genresIDs);
+          for (let index = 0; index < genresIDs.length; index++) {
+            await dispatch("getGenrePlaylists", genresIDs[index]);
+          }
+          commit("togglePushAgain");
+        })
+        .catch(error => {
+          console.log("axios caught an error");
+          console.log(error);
+        });
+    }
   },
-  async loadUserSections({ dispatch, commit }) {
-    await dispatch("playlist/getPlaylists", null, { root: true });
-    commit("load_personalSections");
-  },
-  getTracks({ commit }) {
-    axios
-      .get("/v1/me/tracks", {
+  //-------------------------------------------------
+  //      Get user's recently played list
+  //-------------------------------------------------
+  async recentlyPlayed({ commit }, payload) {
+    await axios
+      .get("/v1/me/recently-played", {
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${payload}`
         }
       })
       .then(response => {
-        let list = response.data;
-        commit("load_tracks", list);
+        commit("setHistory", response.data.history);
       })
       .catch(error => {
         console.log("axios caught an error");
         console.log(error);
       });
+  },
+  //-------------------------------------------------
+  //      Get a list of new releases albums
+  //-------------------------------------------------
+  async getNewReleases({ commit }) {
+    await axios
+      .get("/v1/browse/new-releases")
+      .then(response => {
+        let list = response.data.albums.items;
+        let newList = [];
+        list.forEach(element => {
+          var album = {
+            name: element.name,
+            id: element.id,
+            image: element.image,
+            type: "album"
+          };
+          newList.push(album);
+        });
+        commit("setNewReleases", newList);
+      })
+      .catch(error => {
+        console.log("axios caught an error");
+        console.log(error);
+      });
+  },
+  //-------------------------------------------------
+  //        Webplayer home user's sections
+  //-------------------------------------------------
+  async recentlyPlayedSection({ commit, dispatch }, payload) {
+    await dispatch("recentlyPlayed", payload);
+    commit("setRecentlyPlayed");
+  },
+  async yourPlaylistsSection({ commit, dispatch }, payload) {
+    await dispatch("playlist/getPlaylists", payload, { root: true });
+    commit("setUserPlaylists");
   }
 };
 
-const getters = {
-  categoriesGetter: function(state) {
-    return state.categories;
-  }
-};
 export default {
   namespaced: true,
   state,
   mutations,
-  actions,
-  getters
+  actions
 };
